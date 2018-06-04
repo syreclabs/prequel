@@ -3,14 +3,8 @@ package builder
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strconv"
 )
-
-type cond struct {
-	expr   string
-	params []interface{}
-}
 
 type selecter struct {
 	expr     []string
@@ -64,6 +58,7 @@ func (b *selecter) Having(expr string, params ...interface{}) Selecter {
 
 func (b *selecter) Build() (string, []interface{}, error) {
 	var params []interface{}
+
 	buf := bytes.NewBufferString("select")
 
 	// distinct / distinct on
@@ -106,9 +101,10 @@ func (b *selecter) Build() (string, []interface{}, error) {
 				return "", nil, errors.New("empty where expression")
 			}
 
-			if !validateCondition(x) {
-				return "", nil, errors.New(fmt.Sprintf("invalid where expression (%s), params (%v)", x.expr, x.params))
-			}
+			// placeholderIdx, err = buildCond(x, placeholderIdx)
+			// if !checkCond(x) {
+			// 	return "", nil, errors.New(fmt.Sprintf("invalid where expression (%q), params (%v)", x.expr, x.params))
+			// }
 
 			if i > 0 {
 				buf.WriteString(" and ")
@@ -117,7 +113,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			// TODO: rename params in x.expr, use len(params) as last used params
 
 			// note: x.params may contain unused by x.expr params
-			params = append(params, x.params...)
+			// params = append(params, x.params...)
 
 			buf.WriteString(x.expr)
 		}
@@ -142,9 +138,9 @@ func (b *selecter) Build() (string, []interface{}, error) {
 				return "", nil, errors.New("empty having expression")
 			}
 
-			if !validateCondition(x) {
-				return "", nil, errors.New(fmt.Sprintf("invalid having expression (%s), params (%v)", x.expr, x.params))
-			}
+			// if !validateCondition(x) {
+			// 	return "", nil, errors.New(fmt.Sprintf("invalid having expression (%s), params (%v)", x.expr, x.params))
+			// }
 
 			if i > 0 {
 				buf.WriteString(" and ")
@@ -153,7 +149,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			// TODO: rename params in x.expr, use len(params) as last used params
 
 			// note: x.params may contain unused by x.expr params
-			params = append(params, x.params...)
+			// params = append(params, x.params...)
 
 			buf.WriteString(x.expr)
 		}
