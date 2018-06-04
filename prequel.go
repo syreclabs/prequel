@@ -3,8 +3,8 @@ package prequel
 import (
 	"database/sql"
 
-	"github.com/dmgk/prequel/builder"
 	"github.com/jmoiron/sqlx"
+	"syreclabs.com/go/prequel/builder"
 )
 
 type Queryer interface {
@@ -18,7 +18,7 @@ func Select(q Queryer, b builder.Selecter, dest interface{}) error {
 	if err != nil {
 		return err
 	}
-	return sqlx.Select(q, dest, sql, params)
+	return sqlx.Select(q.(sqlx.Queryer), dest, sql, params)
 }
 
 type DB struct {

@@ -10,6 +10,8 @@ type Selecter interface {
 	Offset(offset int) Selecter
 	Limit(limit int) Selecter
 	Distinct(expr ...string) Selecter
+	GroupBy(expr string) Selecter
+	Having(cond string, param ...interface{}) Selecter
 	Builder
 }
 
@@ -17,18 +19,27 @@ type Selecter interface {
 // 	Builder
 // }
 
-// type Inserter interface {
-// 	Builder
-// }
+type Inserter interface {
+	Columns(expr ...string) Inserter
+	Values(param ...interface{}) Inserter
+	Builder
+}
 
-// type Deleter interface {
-// 	Builder
-// }
+type Deleter interface {
+	Where(cond string, param ...interface{}) Deleter
+	Builder
+}
 
 func Select(expr ...string) Selecter {
 	return &selecter{expr: expr}
 }
 
 // Update(table string) UpdateBuilder
-// Insert(table string) InsertBuilder
-// Delete(table string) DeleteBuilder
+
+func Insert(table string) Inserter {
+	return &inserter{into: table}
+}
+
+func Delete(table string) Deleter {
+	return &deleter{from: table}
+}
