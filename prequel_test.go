@@ -162,16 +162,17 @@ func TestSelectWhere(t *testing.T) {
 			b := builder.
 				Select("first_name", "last_name", "email").
 				From("users").
-				Where("last_name IN ($1)", []string{"Last"})
+				Where("last_name IN ($1)", []string{"Last", "Doe", "Somebody", "Else"}).
+				OrderBy("first_name DESC")
 
 			var users []*User
 			if err := db.Select(context.Background(), b, &users); err != nil {
 				t.Fatal(err)
 			}
-			if len(users) != 1 {
+			if len(users) != 2 {
 				t.Fatalf("expected to get %d records, got %d", 1, len(users))
 			}
-			if users[0].LastName != "Last" {
+			if users[0].LastName != "Doe" {
 				t.Errorf("expected LastName %q, got %q", "Last", users[0].LastName)
 			}
 		})
