@@ -15,9 +15,14 @@ type Selecter interface {
 	Builder
 }
 
-// type Updater interface {
-// 	Builder
-// }
+type Updater interface {
+	From(from string) Updater
+	Columns(expr ...string) Updater
+	Values(param ...interface{}) Updater
+	Where(cond string, param ...interface{}) Updater
+	Returning(expr ...string) Updater
+	Builder
+}
 
 type Inserter interface {
 	Columns(expr ...string) Inserter
@@ -34,7 +39,9 @@ func Select(expr ...string) Selecter {
 	return &selecter{expr: expr}
 }
 
-// Update(table string) UpdateBuilder
+func Update(table string) Updater {
+	return &updater{table: table}
+}
 
 func Insert(table string) Inserter {
 	return &inserter{into: table}

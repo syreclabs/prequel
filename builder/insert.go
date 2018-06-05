@@ -39,27 +39,25 @@ func (b *inserter) Build() (string, []interface{}, error) {
 	buf.WriteString(" into ")
 	buf.WriteString(b.into)
 
-	if len(b.columns) > 0 {
-		// columns
-		buf.WriteString(" (")
-		for i, x := range b.columns {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(x)
+	// columns
+	buf.WriteString(" (")
+	for i, x := range b.columns {
+		if i > 0 {
+			buf.WriteString(", ")
 		}
-		buf.WriteRune(')')
-
-		// values
-		buf.WriteString(" values (")
-		for i, _ := range b.columns {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(fmt.Sprintf("$%d", i+1))
-		}
-		buf.WriteRune(')')
+		buf.WriteString(x)
 	}
+	buf.WriteRune(')')
+
+	// values
+	buf.WriteString(" values (")
+	for i, _ := range b.columns {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(fmt.Sprintf("$%d", i+1))
+	}
+	buf.WriteRune(')')
 
 	return buf.String(), b.values, nil
 }

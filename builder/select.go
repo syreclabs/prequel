@@ -2,20 +2,19 @@ package builder
 
 import (
 	"bytes"
-	"errors"
 	"strconv"
 )
 
 type selecter struct {
 	expr     []string
 	from     []string
-	where    []cond
+	where    conds
 	params   []interface{}
 	offset   int
 	limit    int
 	distinct []string
 	groupby  []string
-	having   []cond
+	having   conds
 }
 
 func (b *selecter) From(from string) Selecter {
@@ -24,7 +23,7 @@ func (b *selecter) From(from string) Selecter {
 }
 
 func (b *selecter) Where(expr string, params ...interface{}) Selecter {
-	b.where = append(b.where, cond{expr, params})
+	b.where = append(b.where, &cond{expr, params})
 	return b
 }
 
@@ -52,7 +51,7 @@ func (b *selecter) GroupBy(expr string) Selecter {
 }
 
 func (b *selecter) Having(expr string, params ...interface{}) Selecter {
-	b.having = append(b.having, cond{expr, params})
+	b.having = append(b.having, &cond{expr, params})
 	return b
 }
 
@@ -95,26 +94,17 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	}
 
 	if len(b.where) > 0 {
+		// validate and rename where conditions
+		if err := b.where.build(len(params)); err != nil {
+			return "", nil, err
+		}
+
 		buf.WriteString(" where ")
 		for i, x := range b.where {
-			if isEmpty(x.expr) {
-				return "", nil, errors.New("empty where expression")
-			}
-
-			// placeholderIdx, err = buildCond(x, placeholderIdx)
-			// if !checkCond(x) {
-			// 	return "", nil, errors.New(fmt.Sprintf("invalid where expression (%q), params (%v)", x.expr, x.params))
-			// }
-
 			if i > 0 {
 				buf.WriteString(" and ")
 			}
-
-			// TODO: rename params in x.expr, use len(params) as last used params
-
-			// note: x.params may contain unused by x.expr params
-			// params = append(params, x.params...)
-
+			params = append(params, x.params...)
 			buf.WriteString(x.expr)
 		}
 	}
@@ -132,25 +122,17 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// having
 	if len(b.having) > 0 {
+		// validate and rename where conditions
+		if err := b.having.build(len(params)); err != nil {
+			return "", nil, err
+		}
+
 		buf.WriteString(" having ")
 		for i, x := range b.having {
-			if isEmpty(x.expr) {
-				return "", nil, errors.New("empty having expression")
-			}
-
-			// if !validateCondition(x) {
-			// 	return "", nil, errors.New(fmt.Sprintf("invalid having expression (%s), params (%v)", x.expr, x.params))
-			// }
-
 			if i > 0 {
 				buf.WriteString(" and ")
 			}
-
-			// TODO: rename params in x.expr, use len(params) as last used params
-
-			// note: x.params may contain unused by x.expr params
-			// params = append(params, x.params...)
-
+			params = append(params, x.params...)
 			buf.WriteString(x.expr)
 		}
 	}

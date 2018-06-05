@@ -79,9 +79,15 @@ func (c *cond) build(placeholderIdx int) (int, error) {
 	return placeholderIdx + len(c.params), nil
 }
 
-func (cc conds) build() error {
-	placeholderIdx := 0
+func (cc conds) build(placeholderIdx int) error {
+	if placeholderIdx < 0 {
+		return errors.New("negative index")
+	}
 	for _, c := range cc {
+		if isEmpty(c.expr) {
+			return errors.New("empty expression")
+		}
+
 		newIdx, err := c.build(placeholderIdx)
 		if err != nil {
 			return err
