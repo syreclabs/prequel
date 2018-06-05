@@ -2,10 +2,13 @@ package builder
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"strconv"
 )
 
 type selecter struct {
+	with     statements
 	expr     []string
 	from     []string
 	where    conds
@@ -14,7 +17,13 @@ type selecter struct {
 	limit    int
 	distinct []string
 	groupby  []string
+	orderby  []string
 	having   conds
+}
+
+func (b *selecter) With(name string, query Selecter) Selecter {
+	b.with = append(b.with, &statement{name, query})
+	return b
 }
 
 func (b *selecter) From(from string) Selecter {
@@ -55,10 +64,47 @@ func (b *selecter) Having(expr string, params ...interface{}) Selecter {
 	return b
 }
 
-func (b *selecter) Build() (string, []interface{}, error) {
-	var params []interface{}
+func (b *selecter) OrderBy(expr string) Selecter {
+	b.orderby = append(b.orderby, expr)
+	return b
+}
 
-	buf := bytes.NewBufferString("select")
+func (b *selecter) Build() (string, []interface{}, error) {
+	// build
+	var params []interface{}
+	var buf bytes.Buffer
+
+	// with
+	if b.with != nil && len(b.with) > 0 {
+		buf.WriteString("with")
+
+		for i, x := range b.with {
+			if isEmpty(x.name) {
+				return "", nil, errors.New("empty query name")
+			}
+
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+
+			// prepare query
+			sql, pps, err := x.query.Build()
+			if err != nil {
+				return "", nil, err
+			}
+
+			buf.WriteString(fmt.Sprintf(" %s as (%s)", x.name, sql))
+
+			if len(pps) > 0 {
+				params = append(params, pps...)
+			}
+		}
+
+		buf.WriteString(" ")
+	}
+
+	// select
+	buf.WriteString("select")
 
 	// distinct / distinct on
 	if b.distinct != nil {
@@ -95,7 +141,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	if len(b.where) > 0 {
 		// validate and rename where conditions
-		if err := b.where.build(len(params)); err != nil {
+		if err := b.where.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
@@ -123,7 +169,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	// having
 	if len(b.having) > 0 {
 		// validate and rename where conditions
-		if err := b.having.build(len(params)); err != nil {
+		if err := b.having.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
@@ -134,6 +180,17 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
+		}
+	}
+
+	// order by
+	if len(b.orderby) > 0 {
+		buf.WriteString(" order by ")
+		for i, x := range b.orderby {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(x)
 		}
 	}
 

@@ -10,12 +10,17 @@ import (
 // UPDATE summary s SET (sum_x, sum_y, avg_x, avg_y) = (SELECT sum(x), sum(y), avg(x), avg(y) FROM data d WHERE d.group_id = s.group_id)
 
 type updater struct {
+	with      statements
 	table     string
 	from      []string
-	columns   []string
-	values    []interface{}
+	set       conds
 	where     conds
 	returning []string
+}
+
+func (b *updater) With(name string, query Selecter) Updater {
+	b.with = append(b.with, &statement{name, query})
+	return b
 }
 
 func (b *updater) From(from string) Updater {
@@ -23,13 +28,8 @@ func (b *updater) From(from string) Updater {
 	return b
 }
 
-func (b *updater) Columns(columns ...string) Updater {
-	b.columns = append(b.columns, columns...)
-	return b
-}
-
-func (b *updater) Values(values ...interface{}) Updater {
-	b.values = append(b.values, values...)
+func (b *updater) Set(expr string, params ...interface{}) Updater {
+	b.set = append(b.set, &cond{expr, params})
 	return b
 }
 
@@ -49,28 +49,59 @@ func (b *updater) Build() (string, []interface{}, error) {
 		return "", nil, errors.New("empty table")
 	}
 
-	if len(b.columns) == 0 {
-		return "", nil, errors.New("empty columns")
-	}
-
-	if len(b.columns) != len(b.values) {
-		return "", nil, errors.New(fmt.Sprintf("invalid number of values, expected (%d), got (%d)", len(b.columns), len(b.values)))
+	if len(b.set) == 0 {
+		return "", nil, errors.New("empty set")
 	}
 
 	// build
 	var params []interface{}
-	buf := bytes.NewBufferString("update ")
-	buf.WriteString(b.table)
+	var buf bytes.Buffer
 
-	// columns
+	// with
+	if b.with != nil && len(b.with) > 0 {
+		buf.WriteString("with")
+
+		for i, x := range b.with {
+			if isEmpty(x.name) {
+				return "", nil, errors.New("empty query name")
+			}
+
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+
+			// prepare query
+			sql, pps, err := x.query.Build()
+			if err != nil {
+				return "", nil, err
+			}
+
+			buf.WriteString(fmt.Sprintf(" %s as (%s)", x.name, sql))
+
+			if len(pps) > 0 {
+				params = append(params, pps...)
+			}
+		}
+
+		buf.WriteString(" ")
+	}
+
+	// update
+	buf.WriteString(fmt.Sprintf("update %s", b.table))
+
+	// validate and rename set conditions
+	if err := b.set.build(len(params) + 1); err != nil {
+		return "", nil, err
+	}
 	buf.WriteString(" set ")
-	for i, x := range b.columns {
+	for i, x := range b.set {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(fmt.Sprintf("%s = $%d", x, i+1))
+
+		params = append(params, x.params...)
+		buf.WriteString(x.expr)
 	}
-	params = append(params, b.values...)
 
 	// from
 	if len(b.from) > 0 {
@@ -86,7 +117,7 @@ func (b *updater) Build() (string, []interface{}, error) {
 	// where
 	if len(b.where) > 0 {
 		// validate and rename where conditions
-		if err := b.where.build(len(params)); err != nil {
+		if err := b.where.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
