@@ -23,17 +23,22 @@ func init() {
 }
 
 func Connect() {
-	dsn := os.Getenv("SQLX_POSTGRES_DSN")
+	const dsnEnv = "PREQUEL_TEST_DSN"
+
+	dsn := os.Getenv(dsnEnv)
 	doTest = dsn != "" && dsn != "skip"
 
-	if doTest {
-		sqlxdb, err := sqlx.Connect("postgres", dsn)
-		if err != nil {
-			fmt.Printf("sqlx.Connect: %#v\n", err)
-			doTest = false
-		}
-		db = &DB{sqlxdb}
+	if !doTest {
+		fmt.Printf("%s is not set, some tests will be skipped", dsnEnv)
+		return
 	}
+
+	sqlxdb, err := sqlx.Connect("postgres", dsn)
+	if err != nil {
+		fmt.Printf("sqlx.Connect: %#v\n", err)
+		doTest = false
+	}
+	db = &DB{sqlxdb}
 }
 
 var schema = struct {
@@ -76,6 +81,9 @@ func execMulti(ctx context.Context, e Execer, query string) error {
 }
 
 func withSchema(ctx context.Context, testFunc func()) {
+	if !doTest {
+		return
+	}
 	defer func() {
 		execMulti(ctx, db, schema.drop)
 	}()
