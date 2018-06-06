@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/syreclabs/sqlx"
 	"syreclabs.com/go/prequel/builder"
 )
 
@@ -19,10 +19,6 @@ var (
 )
 
 func init() {
-	Connect()
-}
-
-func Connect() {
 	const dsnEnv = "PREQUEL_TEST_DSN"
 
 	dsn := os.Getenv(dsnEnv)
@@ -85,17 +81,17 @@ func withSchema(ctx context.Context, testFunc func()) {
 		return
 	}
 	defer func() {
-		execMulti(ctx, db, schema.drop)
+		execMulti(ctx, db.DB, schema.drop)
 	}()
-	execMulti(ctx, db, schema.create)
+	execMulti(ctx, db.DB, schema.create)
 	testFunc()
 }
 
 func loadFixtures() {
 	tx := db.MustBegin(context.Background())
-	tx.Tx.MustExec(tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "First", "Last", "user@example.com")
-	tx.Tx.MustExec(tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "Johnny", "Doe", "john@mail.net")
-	tx.Tx.MustExec(tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "Janie", "Roe", "jane@lame.net")
+	tx.Tx.MustExec(tx.Tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "First", "Last", "user@example.com")
+	tx.Tx.MustExec(tx.Tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "Johnny", "Doe", "john@mail.net")
+	tx.Tx.MustExec(tx.Tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "Janie", "Roe", "jane@lame.net")
 	tx.Commit()
 }
 
@@ -286,6 +282,31 @@ func TestExecDelete(t *testing.T) {
 		}
 		if rows != 1 {
 			t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+		}
+	})
+}
+
+func TestTx(t *testing.T) {
+	withSchema(context.Background(), func() {
+		loadFixtures()
+
+		b := builder.
+			Select("first_name", "last_name", "email").
+			From("users").
+			Where("email = $1", "john@mail.net")
+
+		tx, err := db.Begin(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Commit()
+
+		var user User
+		if err := tx.Get(context.Background(), b, &user); err != nil {
+			t.Fatal(err)
+		}
+		if user.Email != "john@mail.net" {
+			t.Fatalf("expected to Email %q, got %q", "john@mail.net", user.Email)
 		}
 	})
 }
