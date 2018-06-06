@@ -23,7 +23,7 @@ func SetLogger(logger loggie.Logger) {
 	log = logger
 }
 
-func Select(ctx context.Context, q Queryer, b builder.Selecter, dest interface{}) error {
+func Select(ctx context.Context, q Queryer, b builder.Builder, dest interface{}) error {
 	sql, params, err := b.Build()
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func Select(ctx context.Context, q Queryer, b builder.Selecter, dest interface{}
 	return sqlx.SelectContext(ctx, q, dest, sql, params...)
 }
 
-func Get(ctx context.Context, q Queryer, b builder.Selecter, dest interface{}) error {
+func Get(ctx context.Context, q Queryer, b builder.Builder, dest interface{}) error {
 	sql, params, err := b.Build()
 	if err != nil {
 		return err
@@ -62,19 +62,19 @@ type DB struct {
 	*sqlx.DB
 }
 
-func (db *DB) Select(ctx context.Context, b builder.Selecter, dest interface{}) error {
+func (db *DB) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
 	return Select(ctx, db, b, dest)
 }
 
-func (db *DB) Get(ctx context.Context, b builder.Selecter, dest interface{}) error {
+func (db *DB) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
 	return Get(ctx, db, b, dest)
 }
 
-func (db *DB) Exec(ctx context.Context, b builder.Selecter) (sql.Result, error) {
+func (db *DB) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
 	return Exec(ctx, db, b)
 }
 
-func (db *DB) MustExec(ctx context.Context, b builder.Selecter) sql.Result {
+func (db *DB) MustExec(ctx context.Context, b builder.Builder) sql.Result {
 	return MustExec(ctx, db, b)
 }
 
