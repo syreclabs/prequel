@@ -7,7 +7,7 @@ import (
 func TestSelect(t *testing.T) {
 
 	t.Run("Simple", func(t *testing.T) {
-		expectedSql := "select * from table1"
+		expectedSql := "SELECT * FROM table1"
 		b := Select("*").
 			From("table1")
 
@@ -20,7 +20,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithOrderBy", func(t *testing.T) {
-		expectedSql := "select * from table1 order by b asc, a desc"
+		expectedSql := "SELECT * FROM table1 ORDER BY b asc, a desc"
 		b := Select("*").
 			From("table1").
 			OrderBy("b asc").
@@ -35,7 +35,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithLimit", func(t *testing.T) {
-		expectedSql := "select * from table1 limit 10"
+		expectedSql := "SELECT * FROM table1 LIMIT 10"
 		b := Select("*").
 			From("table1").
 			Limit(10)
@@ -49,7 +49,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithOffset", func(t *testing.T) {
-		expectedSql := "select * from table1 offset 5"
+		expectedSql := "SELECT * FROM table1 OFFSET 5"
 		b := Select("*").
 			From("table1").
 			Offset(5)
@@ -63,10 +63,10 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithConditions", func(t *testing.T) {
-		expectedSql := "select * from table1 where name = $1 and $2 and count > $3"
+		expectedSql := "SELECT * FROM table1 WHERE name = $1 AND $2 AND count > $3"
 		b := Select("*").
 			From("table1").
-			Where("name = $2 and $1", "x", true).
+			Where("name = $2 AND $1", "x", true).
 			Where("count > $1", 2)
 
 		sql, params, err := b.Build()
@@ -78,7 +78,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithDistinct", func(t *testing.T) {
-		expectedSql := "select distinct on (a, b) a, b from table1"
+		expectedSql := "SELECT DISTINCT ON (a, b) a, b FROM table1"
 		b := Select("a", "b").
 			Distinct("a", "b").
 			From("table1")
@@ -92,11 +92,11 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithJoins", func(t *testing.T) {
-		expectedSql := "select * from table1 inner join table2 on table2.a = table1.a left outer join table3 on table3.a = table1.a"
+		expectedSql := "SELECT * FROM table1 INNER JOIN table2 ON table2.a = table1.a LEFT OUTER JOIN table3 ON table3.a = table1.a"
 		b := Select("*").
 			From("table1").
-			From("inner join table2 on table2.a = table1.a").
-			From("left outer join table3 on table3.a = table1.a")
+			From("INNER JOIN table2 ON table2.a = table1.a").
+			From("LEFT OUTER JOIN table3 ON table3.a = table1.a")
 
 		sql, params, err := b.Build()
 		if err != nil {
@@ -107,8 +107,8 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithGroupBy", func(t *testing.T) {
-		expectedSql := "select a, min(b) from table1 group by a"
-		b := Select("a, min(b)").
+		expectedSql := "SELECT a, MIN(b) FROM table1 GROUP BY a"
+		b := Select("a, MIN(b)").
 			From("table1").
 			GroupBy("a")
 
@@ -121,12 +121,12 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithHaving", func(t *testing.T) {
-		expectedSql := "select a, min(b) from table1 where c = $1 group by a having max(c) > a and a < $2"
-		b := Select("a, min(b)").
+		expectedSql := "SELECT a, MIN(b) FROM table1 WHERE c = $1 GROUP BY a HAVING MAX(c) > a AND a < $2"
+		b := Select("a, MIN(b)").
 			From("table1").
 			Where("c = $1", 1).
 			GroupBy("a").
-			Having("max(c) > a").
+			Having("MAX(c) > a").
 			Having("a < $1", 3)
 
 		sql, params, err := b.Build()
@@ -138,14 +138,14 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "with table2 as (select id, name from table1 where name = $1) select * from table1 where table2.id = table1.id and $2 and table2.name != 'bbb'"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) SELECT * FROM table1 WHERE table2.id = table1.id AND $2 AND table2.name != 'bbb'"
 		b := Select("*").
 			With("table2", Select("id", "name").
 				From("table1").
 				Where("name = $1", "d")).
 			From("table1").
 			Where("table2.id = table1.id").
-			Where("$1 and table2.name != 'bbb'", true)
+			Where("$1 AND table2.name != 'bbb'", true)
 
 		sql, params, err := b.Build()
 		if err != nil {

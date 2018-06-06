@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 // TODO: on conflict
@@ -46,13 +47,13 @@ func (b *inserter) Build() (string, []interface{}, error) {
 	if len(b.columns) > 0 && len(b.values) > 0 {
 		for _, row := range b.values {
 			if len(b.columns) != len(row) {
-				return "", nil, errors.New(fmt.Sprintf("invalid number of values, expected (%d), got (%d)", len(b.columns), len(row)))
+				return "", nil, fmt.Errorf("invalid number of values, expected %d, got %d", len(b.columns), len(row))
 			}
 		}
 	}
 
 	if b.from != nil && len(b.values) > 0 {
-		return "", nil, errors.New("values must be empty if from specified")
+		return "", nil, errors.New("values must be empty if from is specified")
 	}
 
 	// build
@@ -61,7 +62,7 @@ func (b *inserter) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("with")
+		buf.WriteString("WITH")
 
 		for i, x := range b.with {
 			if isEmpty(x.name) {
@@ -78,21 +79,25 @@ func (b *inserter) Build() (string, []interface{}, error) {
 				return "", nil, err
 			}
 
-			buf.WriteString(fmt.Sprintf(" %s as (%s)", x.name, sql))
+			buf.WriteRune(' ')
+			buf.WriteString(x.name)
+			buf.WriteString(" AS (")
+			buf.WriteString(sql)
+			buf.WriteRune(')')
 
 			if len(pps) > 0 {
 				params = append(params, pps...)
 			}
 		}
 
-		buf.WriteString(" ")
+		buf.WriteRune(' ')
 	}
 
 	// insert
-	buf.WriteString("insert")
+	buf.WriteString("INSERT")
 
 	// into
-	buf.WriteString(" into ")
+	buf.WriteString(" INTO ")
 	buf.WriteString(b.into)
 
 	// columns
@@ -109,7 +114,7 @@ func (b *inserter) Build() (string, []interface{}, error) {
 
 	// values
 	if len(b.values) > 0 {
-		buf.WriteString(" values ")
+		buf.WriteString(" VALUES ")
 		for j, row := range b.values {
 			if j > 0 {
 				buf.WriteString(", ")
@@ -121,7 +126,8 @@ func (b *inserter) Build() (string, []interface{}, error) {
 				if i > 0 {
 					buf.WriteString(", ")
 				}
-				buf.WriteString(fmt.Sprintf("$%d", j*len(row)+i+1))
+				buf.WriteRune('$')
+				buf.WriteString(strconv.Itoa(j*len(row) + i + 1))
 			}
 			buf.WriteRune(')')
 		}
@@ -144,7 +150,7 @@ func (b *inserter) Build() (string, []interface{}, error) {
 
 	// returning
 	if len(b.returning) > 0 {
-		buf.WriteString(" returning ")
+		buf.WriteString(" RETURNING ")
 		for i, x := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")

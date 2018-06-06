@@ -3,7 +3,6 @@ package builder
 import (
 	"bytes"
 	"errors"
-	"fmt"
 )
 
 // TODO: suport update like
@@ -59,7 +58,7 @@ func (b *updater) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("with")
+		buf.WriteString("WITH")
 
 		for i, x := range b.with {
 			if isEmpty(x.name) {
@@ -76,7 +75,11 @@ func (b *updater) Build() (string, []interface{}, error) {
 				return "", nil, err
 			}
 
-			buf.WriteString(fmt.Sprintf(" %s as (%s)", x.name, sql))
+			buf.WriteRune(' ')
+			buf.WriteString(x.name)
+			buf.WriteString(" AS (")
+			buf.WriteString(sql)
+			buf.WriteRune(')')
 
 			if len(pps) > 0 {
 				params = append(params, pps...)
@@ -87,13 +90,14 @@ func (b *updater) Build() (string, []interface{}, error) {
 	}
 
 	// update
-	buf.WriteString(fmt.Sprintf("update %s", b.table))
+	buf.WriteString("UPDATE ")
+	buf.WriteString(b.table)
 
 	// validate and rename set conditions
 	if err := b.set.build(len(params) + 1); err != nil {
 		return "", nil, err
 	}
-	buf.WriteString(" set ")
+	buf.WriteString(" SET ")
 	for i, x := range b.set {
 		if i > 0 {
 			buf.WriteString(", ")
@@ -105,7 +109,7 @@ func (b *updater) Build() (string, []interface{}, error) {
 
 	// from
 	if len(b.from) > 0 {
-		buf.WriteString(" from ")
+		buf.WriteString(" FROM ")
 		for i, x := range b.from {
 			if i > 0 {
 				buf.WriteRune(' ')
@@ -121,10 +125,10 @@ func (b *updater) Build() (string, []interface{}, error) {
 			return "", nil, err
 		}
 
-		buf.WriteString(" where ")
+		buf.WriteString(" WHERE ")
 		for i, x := range b.where {
 			if i > 0 {
-				buf.WriteString(" and ")
+				buf.WriteString(" AND ")
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
@@ -133,7 +137,7 @@ func (b *updater) Build() (string, []interface{}, error) {
 
 	// returning
 	if len(b.returning) > 0 {
-		buf.WriteString(" returning ")
+		buf.WriteString(" RETURNING ")
 		for i, x := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")

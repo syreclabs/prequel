@@ -3,7 +3,6 @@ package builder
 import (
 	"bytes"
 	"errors"
-	"fmt"
 )
 
 type statement struct {
@@ -52,7 +51,7 @@ func (b *deleter) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("with")
+		buf.WriteString("WITH")
 
 		for i, x := range b.with {
 			if isEmpty(x.name) {
@@ -69,7 +68,11 @@ func (b *deleter) Build() (string, []interface{}, error) {
 				return "", nil, err
 			}
 
-			buf.WriteString(fmt.Sprintf(" %s as (%s)", x.name, sql))
+			buf.WriteRune(' ')
+			buf.WriteString(x.name)
+			buf.WriteString(" AS (")
+			buf.WriteString(sql)
+			buf.WriteRune(')')
 
 			if len(pps) > 0 {
 				params = append(params, pps...)
@@ -80,20 +83,18 @@ func (b *deleter) Build() (string, []interface{}, error) {
 	}
 
 	// delete
-	buf.WriteString("delete")
+	buf.WriteString("DELETE FROM ")
 
 	// from
-	buf.WriteString(" from ")
 	buf.WriteString(b.from)
 
 	// using
 	if len(b.using) > 0 {
-		buf.WriteString(" using ")
+		buf.WriteString(" USING ")
 		for i, x := range b.using {
 			if isEmpty(x) {
 				return "", nil, errors.New("empty using")
 			}
-
 			if i > 0 {
 				buf.WriteRune(' ')
 			}
@@ -108,10 +109,10 @@ func (b *deleter) Build() (string, []interface{}, error) {
 			return "", nil, err
 		}
 
-		buf.WriteString(" where ")
+		buf.WriteString(" WHERE ")
 		for i, x := range b.where {
 			if i > 0 {
-				buf.WriteString(" and ")
+				buf.WriteString(" AND ")
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
@@ -120,7 +121,7 @@ func (b *deleter) Build() (string, []interface{}, error) {
 
 	// returning
 	if len(b.returning) > 0 {
-		buf.WriteString(" returning ")
+		buf.WriteString(" RETURNING ")
 		for i, x := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")

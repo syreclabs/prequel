@@ -5,11 +5,9 @@ import (
 	"database/sql"
 
 	"github.com/jmoiron/sqlx"
-	"syreclabs.com/dg/loggie"
+	"syreclabs.com/go/loggie"
 	"syreclabs.com/go/prequel/builder"
 )
-
-var log = loggie.New("sql")
 
 type Queryer interface {
 	sqlx.QueryerContext
@@ -19,13 +17,28 @@ type Execer interface {
 	sqlx.ExecerContext
 }
 
+var log = loggie.New("sql")
+
+func SetLogger(logger loggie.Logger) {
+	log = logger
+}
+
 func Select(ctx context.Context, q Queryer, b builder.Selecter, dest interface{}) error {
 	sql, params, err := b.Build()
 	if err != nil {
 		return err
 	}
-	log.Printf(loggie.Linfo, "%q %#v", sql, params)
+	log.Infof("%q %v", sql, params)
 	return sqlx.SelectContext(ctx, q, dest, sql, params...)
+}
+
+func Get(ctx context.Context, q Queryer, b builder.Selecter, dest interface{}) error {
+	sql, params, err := b.Build()
+	if err != nil {
+		return err
+	}
+	log.Infof("%q %v", sql, params)
+	return sqlx.GetContext(ctx, q, dest, sql, params...)
 }
 
 func Exec(ctx context.Context, e Execer, b builder.Builder) (sql.Result, error) {
@@ -33,7 +46,7 @@ func Exec(ctx context.Context, e Execer, b builder.Builder) (sql.Result, error) 
 	if err != nil {
 		return nil, err
 	}
-	log.Printf(loggie.Ldebug, "sql: %q params: %v", sql, params)
+	log.Infof("%q %v", sql, params)
 	return e.ExecContext(ctx, sql, params...)
 }
 
@@ -51,6 +64,10 @@ type DB struct {
 
 func (db *DB) Select(ctx context.Context, b builder.Selecter, dest interface{}) error {
 	return Select(ctx, db, b, dest)
+}
+
+func (db *DB) Get(ctx context.Context, b builder.Selecter, dest interface{}) error {
+	return Get(ctx, db, b, dest)
 }
 
 func (db *DB) Exec(ctx context.Context, b builder.Selecter) (sql.Result, error) {

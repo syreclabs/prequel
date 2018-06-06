@@ -3,7 +3,6 @@ package builder
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strconv"
 )
 
@@ -76,7 +75,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("with")
+		buf.WriteString("WITH")
 
 		for i, x := range b.with {
 			if isEmpty(x.name) {
@@ -93,25 +92,29 @@ func (b *selecter) Build() (string, []interface{}, error) {
 				return "", nil, err
 			}
 
-			buf.WriteString(fmt.Sprintf(" %s as (%s)", x.name, sql))
+			buf.WriteRune(' ')
+			buf.WriteString(x.name)
+			buf.WriteString(" AS (")
+			buf.WriteString(sql)
+			buf.WriteRune(')')
 
 			if len(pps) > 0 {
 				params = append(params, pps...)
 			}
 		}
 
-		buf.WriteString(" ")
+		buf.WriteRune(' ')
 	}
 
 	// select
-	buf.WriteString("select")
+	buf.WriteString("SELECT")
 
 	// distinct / distinct on
 	if b.distinct != nil {
-		buf.WriteString(" distinct")
+		buf.WriteString(" DISTINCT")
 	}
 	if len(b.distinct) > 0 {
-		buf.WriteString(" on (")
+		buf.WriteString(" ON (")
 		for i, x := range b.distinct {
 			if i > 0 {
 				buf.WriteString(", ")
@@ -131,7 +134,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	}
 
 	// from
-	buf.WriteString(" from ")
+	buf.WriteString(" FROM ")
 	for i, x := range b.from {
 		if i > 0 {
 			buf.WriteRune(' ')
@@ -145,10 +148,10 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			return "", nil, err
 		}
 
-		buf.WriteString(" where ")
+		buf.WriteString(" WHERE ")
 		for i, x := range b.where {
 			if i > 0 {
-				buf.WriteString(" and ")
+				buf.WriteString(" AND ")
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
@@ -157,7 +160,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// group by
 	if len(b.groupby) > 0 {
-		buf.WriteString(" group by ")
+		buf.WriteString(" GROUP BY ")
 		for i, x := range b.groupby {
 			if i > 0 {
 				buf.WriteString(", ")
@@ -173,10 +176,10 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			return "", nil, err
 		}
 
-		buf.WriteString(" having ")
+		buf.WriteString(" HAVING ")
 		for i, x := range b.having {
 			if i > 0 {
-				buf.WriteString(" and ")
+				buf.WriteString(" AND ")
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
@@ -185,7 +188,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// order by
 	if len(b.orderby) > 0 {
-		buf.WriteString(" order by ")
+		buf.WriteString(" ORDER BY ")
 		for i, x := range b.orderby {
 			if i > 0 {
 				buf.WriteString(", ")
@@ -196,13 +199,13 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// offset
 	if b.offset > 0 {
-		buf.WriteString(" offset ")
+		buf.WriteString(" OFFSET ")
 		buf.WriteString(strconv.Itoa(b.offset))
 	}
 
 	// limit
 	if b.limit > 0 {
-		buf.WriteString(" limit ")
+		buf.WriteString(" LIMIT ")
 		buf.WriteString(strconv.Itoa(b.limit))
 	}
 

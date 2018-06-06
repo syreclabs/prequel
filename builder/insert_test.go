@@ -7,7 +7,7 @@ import (
 
 func TestInsert(t *testing.T) {
 	t.Run("Simple", func(t *testing.T) {
-		expectedSql := "insert into table1 (a, b, c) values ($1, $2, $3)"
+		expectedSql := "INSERT INTO table1 (a, b, c) VALUES ($1, $2, $3)"
 		b := Insert("table1").
 			Columns("a", "b", "c").
 			Values(1, "bbb", time.Now())
@@ -21,7 +21,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("WithoutColumns", func(t *testing.T) {
-		expectedSql := "insert into table1 values ($1, $2, $3)"
+		expectedSql := "INSERT INTO table1 VALUES ($1, $2, $3)"
 		b := Insert("table1").
 			Values(1, "bbb", time.Now())
 
@@ -35,7 +35,7 @@ func TestInsert(t *testing.T) {
 
 	t.Run("WithReturning", func(t *testing.T) {
 		t.Run("All", func(t *testing.T) {
-			expectedSql := "insert into table1 values ($1, $2, $3) returning *"
+			expectedSql := "INSERT INTO table1 VALUES ($1, $2, $3) RETURNING *"
 			b := Insert("table1").
 				Values(1, "bbb", time.Now()).
 				Returning("*")
@@ -49,7 +49,7 @@ func TestInsert(t *testing.T) {
 		})
 
 		t.Run("Columns", func(t *testing.T) {
-			expectedSql := "insert into table1 values ($1, $2, $3) returning id, name"
+			expectedSql := "INSERT INTO table1 VALUES ($1, $2, $3) RETURNING id, name"
 			b := Insert("table1").
 				Values(1, "bbb", time.Now()).
 				Returning("id", "name")
@@ -64,7 +64,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("MultipleRows", func(t *testing.T) {
-		expectedSql := "insert into table1 values ($1, $2, $3), ($4, $5, $6), ($7, $8, $9)"
+		expectedSql := "INSERT INTO table1 VALUES ($1, $2, $3), ($4, $5, $6), ($7, $8, $9)"
 		b := Insert("table1").
 			Values(1, "bbb", time.Now()).
 			Values(2, "aaa", time.Now()).
@@ -79,7 +79,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "with table2 as (select id, name from table1 where name = $1) insert into table1 select * from table2 returning *"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) INSERT INTO table1 SELECT * FROM table2 RETURNING *"
 		b := Insert("table1").
 			With("table2", Select("id", "name").
 				From("table1").
