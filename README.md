@@ -1,4 +1,4 @@
-PostgreSQL query bulder and executor (with jmoiron/sqlx).
+PostgreSQL query bulder and executor.
 
 [![GoDoc](https://godoc.org/syreclabs.com/go/prequel?status.svg)](https://godoc.org/syreclabs.com/go/prequel)
 [![Build Status](https://travis-ci.org/syreclabs/prequel.svg?branch=master)](https://travis-ci.org/syreclabs/prequel)
