@@ -3,13 +3,15 @@ package builder
 import (
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 // TODO: suport update like
 // UPDATE summary s SET (sum_x, sum_y, avg_x, avg_y) = (SELECT sum(x), sum(y), avg(x), avg(y) FROM data d WHERE d.group_id = s.group_id)
 
 type updater struct {
-	with      statements
+	upsert    bool // tells builder if sql should be built for update or for upsert
+	with      withs
 	table     string
 	from      []string
 	set       conds
@@ -18,7 +20,7 @@ type updater struct {
 }
 
 func (b *updater) With(name string, query Selecter) Updater {
-	b.with = append(b.with, &statement{name, query})
+	b.with = append(b.with, &with{name, query})
 	return b
 }
 
@@ -29,6 +31,13 @@ func (b *updater) From(from string) Updater {
 
 func (b *updater) Set(expr string, params ...interface{}) Updater {
 	b.set = append(b.set, &cond{expr, params})
+	return b
+}
+
+func (b *updater) SetExcluded(cols ...string) Updater {
+	for _, col := range cols {
+		b.set = append(b.set, &cond{fmt.Sprintf("%s = EXCLUDED.%s", col, col), nil})
+	}
 	return b
 }
 
@@ -44,8 +53,22 @@ func (b *updater) Returning(returning ...string) Updater {
 
 func (b *updater) Build() (string, []interface{}, error) {
 	// verify
-	if isEmpty(b.table) {
-		return "", nil, errors.New("empty table")
+	if b.upsert {
+		if b.with != nil && len(b.with) > 0 {
+			return "", nil, errors.New("with not supported for upsert")
+		}
+
+		if len(b.from) > 0 {
+			return "", nil, errors.New("from not supported for update part of upsert")
+		}
+
+		if len(b.returning) > 0 {
+			return "", nil, errors.New("returning not supported for update part of upsert")
+		}
+	} else {
+		if isEmpty(b.table) {
+			return "", nil, errors.New("empty table")
+		}
 	}
 
 	if len(b.set) == 0 {
@@ -58,53 +81,41 @@ func (b *updater) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("WITH")
+		sql, pps, err := b.with.build()
+		if err != nil {
+			return "", nil, err
+		}
 
-		for i, x := range b.with {
-			if isEmpty(x.name) {
-				return "", nil, errors.New("empty query name")
-			}
+		buf.WriteString(sql)
+		buf.WriteRune(' ')
 
+		if len(pps) > 0 {
+			params = append(params, pps...)
+		}
+	}
+
+	// update
+	if !b.upsert {
+		buf.WriteString("UPDATE ")
+		buf.WriteString(b.table)
+	}
+
+	// set
+	if len(b.set) > 0 {
+		// validate and rename set conditions
+		if err := b.set.build(len(params) + 1); err != nil {
+			return "", nil, err
+		}
+
+		buf.WriteString(" SET ")
+		for i, x := range b.set {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
 
-			// prepare query
-			sql, pps, err := x.query.Build()
-			if err != nil {
-				return "", nil, err
-			}
-
-			buf.WriteRune(' ')
-			buf.WriteString(x.name)
-			buf.WriteString(" AS (")
-			buf.WriteString(sql)
-			buf.WriteRune(')')
-
-			if len(pps) > 0 {
-				params = append(params, pps...)
-			}
+			params = append(params, x.params...)
+			buf.WriteString(x.expr)
 		}
-
-		buf.WriteString(" ")
-	}
-
-	// update
-	buf.WriteString("UPDATE ")
-	buf.WriteString(b.table)
-
-	// validate and rename set conditions
-	if err := b.set.build(len(params) + 1); err != nil {
-		return "", nil, err
-	}
-	buf.WriteString(" SET ")
-	for i, x := range b.set {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-
-		params = append(params, x.params...)
-		buf.WriteString(x.expr)
 	}
 
 	// from

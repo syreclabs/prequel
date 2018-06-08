@@ -2,12 +2,11 @@ package builder
 
 import (
 	"bytes"
-	"errors"
 	"strconv"
 )
 
 type selecter struct {
-	with     statements
+	with     withs
 	expr     []string
 	from     []string
 	where    conds
@@ -22,7 +21,7 @@ type selecter struct {
 }
 
 func (b *selecter) With(name string, query Selecter) Selecter {
-	b.with = append(b.with, &statement{name, query})
+	b.with = append(b.with, &with{name, query})
 	return b
 }
 
@@ -81,35 +80,17 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("WITH")
-
-		for i, x := range b.with {
-			if isEmpty(x.name) {
-				return "", nil, errors.New("empty query name")
-			}
-
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-
-			// prepare query
-			sql, pps, err := x.query.Build()
-			if err != nil {
-				return "", nil, err
-			}
-
-			buf.WriteRune(' ')
-			buf.WriteString(x.name)
-			buf.WriteString(" AS (")
-			buf.WriteString(sql)
-			buf.WriteRune(')')
-
-			if len(pps) > 0 {
-				params = append(params, pps...)
-			}
+		sql, pps, err := b.with.build()
+		if err != nil {
+			return "", nil, err
 		}
 
+		buf.WriteString(sql)
 		buf.WriteRune(' ')
+
+		if len(pps) > 0 {
+			params = append(params, pps...)
+		}
 	}
 
 	// select

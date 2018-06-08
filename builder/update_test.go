@@ -23,16 +23,16 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("SimpleAll", func(t *testing.T) {
-		expectedSql := "UPDATE table1 SET (a, b, c, d) = ($1, $2, $3, 'ddd')"
+		expectedSql := "UPDATE table1 SET (a, b, c, d, r) = ($1, $2, $3, 'ddd', $4)"
 		b := Update("table1").
-			Set("(a, b, c, d) = ($1, $2, $3, 'ddd')", 1, "bbb", time.Now())
+			Set("(a, b, c, d, r) = ($1, $2, $3, 'ddd', $4)", 1, "bbb", time.Now(), true)
 
 		sql, params, err := b.Build()
 		if err != nil {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+		validateGeneratedSql(t, sql, expectedSql, len(params), 4)
 	})
 
 	t.Run("WithConditions", func(t *testing.T) {

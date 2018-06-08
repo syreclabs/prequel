@@ -103,12 +103,18 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) DELETE FROM table1 WHERE table2.id = table1.id AND name = $2 AND $3 RETURNING id, name"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1), table3 AS (SELECT id, name FROM table1 WHERE name = $2) DELETE FROM table1 WHERE table2.id = table1.id AND table3.id = table1.id AND name = $3 AND $4 RETURNING id, name"
 		b := Delete("table1").
-			With("table2", Select("id", "name").
-				From("table1").
-				Where("name = $1", "d")).
+			With("table2",
+				Select("id", "name").
+					From("table1").
+					Where("name = $1", "d")).
+			With("table3",
+				Select("id", "name").
+					From("table1").
+					Where("name = $1", "d")).
 			Where("table2.id = table1.id").
+			Where("table3.id = table1.id").
 			Where("name = $2 AND $1", "a", true).
 			Returning("id", "name")
 
@@ -117,6 +123,6 @@ func TestDelete(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+		validateGeneratedSql(t, sql, expectedSql, len(params), 4)
 	})
 }

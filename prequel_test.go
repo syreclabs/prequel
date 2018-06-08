@@ -59,7 +59,7 @@ type User struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func execMulti(ctx context.Context, e Execer, query string) error {
+func execMulti(ctx context.Context, e sqlx.ExecerContext, query string) error {
 	stmts := strings.Split(query, ";\n")
 	if len(strings.Trim(stmts[len(stmts)-1], " \n\t\r")) == 0 {
 		stmts = stmts[:len(stmts)-1]

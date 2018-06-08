@@ -5,14 +5,8 @@ import (
 	"errors"
 )
 
-type statement struct {
-	name  string
-	query Selecter
-}
-type statements []*statement
-
 type deleter struct {
-	with      statements
+	with      withs
 	from      string
 	using     []string
 	where     conds
@@ -20,7 +14,7 @@ type deleter struct {
 }
 
 func (b *deleter) With(name string, query Selecter) Deleter {
-	b.with = append(b.with, &statement{name, query})
+	b.with = append(b.with, &with{name, query})
 	return b
 }
 
@@ -51,35 +45,17 @@ func (b *deleter) Build() (string, []interface{}, error) {
 
 	// with
 	if b.with != nil && len(b.with) > 0 {
-		buf.WriteString("WITH")
-
-		for i, x := range b.with {
-			if isEmpty(x.name) {
-				return "", nil, errors.New("empty query name")
-			}
-
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-
-			// prepare query
-			sql, pps, err := x.query.Build()
-			if err != nil {
-				return "", nil, err
-			}
-
-			buf.WriteRune(' ')
-			buf.WriteString(x.name)
-			buf.WriteString(" AS (")
-			buf.WriteString(sql)
-			buf.WriteRune(')')
-
-			if len(pps) > 0 {
-				params = append(params, pps...)
-			}
+		sql, pps, err := b.with.build()
+		if err != nil {
+			return "", nil, err
 		}
 
-		buf.WriteString(" ")
+		buf.WriteString(sql)
+		buf.WriteRune(' ')
+
+		if len(pps) > 0 {
+			params = append(params, pps...)
+		}
 	}
 
 	// delete
