@@ -7,71 +7,39 @@ import (
 	"time"
 
 	"github.com/syreclabs/sqlx"
-	"syreclabs.com/go/loggie"
 	"syreclabs.com/go/prequel/builder"
 )
 
-// Queryer is an interface used by Get and Select.
+// Queryer is an interface used by Select and Get
 type Queryer interface {
-	sqlx.QueryerContext
+	Select(ctx context.Context, b builder.Builder, dest interface{}) error
+	Get(ctx context.Context, b builder.Builder, dest interface{}) error
 }
 
 // Execer is an interface used by Exec and MustExec.
 type Execer interface {
-	sqlx.ExecerContext
+	Exec(ctx context.Context, b builder.Builder) (sql.Result, error)
+	MustExec(ctx context.Context, b builder.Builder) sql.Result
 }
 
-var log = loggie.New("sql")
+// Runner is an interface used by both Queryer and Execer.
+type Runner interface {
+	Queryer
+	Execer
+}
 
-func SetLogger(logger loggie.Logger) {
+// Beginner is an interface used by Begin and BeginTx (and their Must* variants).
+type Beginner interface {
+	Begin(ctx context.Context) (*Tx, error)
+	MustBegin(ctx context.Context) *Tx
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error)
+	MustBeginTx(ctx context.Context, opts *sql.TxOptions) *Tx
+}
+
+var log = newDefaultLogger()
+
+func SetLogger(logger Logger) {
 	log = logger
-}
-
-// Select builds the query using the provided Builder, executes it with Queryer and
-// scans each row into dest, which must be a slice. If the slice elements are scannable,
-// then the result set must have only one column. Otherwise, sqlx.StructScan is used.
-func Select(ctx context.Context, q Queryer, b builder.Builder, dest interface{}) error {
-	start := time.Now()
-	sql, params, err := b.Build()
-	if err != nil {
-		return err
-	}
-	defer logSql(start, sql, params)
-	return sqlx.SelectContext(ctx, q, dest, sql, params...)
-}
-
-// Get builds the query using the provided Builder, executes it with Queryer and scans the
-// resulting row to dest. If dest is scannable, the result must only have one column. Otherwise,
-// sqlx.StructScan is used. Get will return sql.ErrNoRows if the result set is empty.
-func Get(ctx context.Context, q Queryer, b builder.Builder, dest interface{}) error {
-	start := time.Now()
-	sql, params, err := b.Build()
-	if err != nil {
-		return err
-	}
-	defer logSql(start, sql, params)
-	return sqlx.GetContext(ctx, q, dest, sql, params...)
-}
-
-// Exec builds the query using the provided Builder and executes it with Execer.
-func Exec(ctx context.Context, e Execer, b builder.Builder) (sql.Result, error) {
-	start := time.Now()
-	sql, params, err := b.Build()
-	if err != nil {
-		return nil, err
-	}
-	defer logSql(start, sql, params)
-	return e.ExecContext(ctx, sql, params...)
-}
-
-// MustExec builds the query using the provided Builder and executes it with Execer. It will
-// panic if there was an error.
-func MustExec(ctx context.Context, e Execer, b builder.Builder) sql.Result {
-	res, err := Exec(ctx, e, b)
-	if err != nil {
-		panic(err)
-	}
-	return res
 }
 
 // DB is a wrapper around sqlx.DB which supports builder.Builder.
@@ -124,22 +92,22 @@ func MustConnect(ctx context.Context, driverName, dataSourceName string) *DB {
 
 // Select using this DB.
 func (db *DB) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Select(ctx, db.DB, b, dest)
+	return doSelect(ctx, db.DB, b, dest)
 }
 
 // Get using this DB.
 func (db *DB) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Get(ctx, db.DB, b, dest)
+	return doGet(ctx, db.DB, b, dest)
 }
 
 // Exec using this DB.
 func (db *DB) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
-	return Exec(ctx, db.DB, b)
+	return doExec(ctx, db.DB, b)
 }
 
 // MustExec using this DB. This method will panic on error.
 func (db *DB) MustExec(ctx context.Context, b builder.Builder) sql.Result {
-	return MustExec(ctx, db.DB, b)
+	return doMustExec(ctx, db.DB, b)
 }
 
 // Begin starts a new transaction using this DB.
@@ -209,22 +177,22 @@ type Tx struct {
 
 // Select using this transaction.
 func (tx *Tx) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Select(ctx, tx.Tx, b, dest)
+	return doSelect(ctx, tx.Tx, b, dest)
 }
 
 // Get using this transaction.
 func (tx *Tx) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Get(ctx, tx.Tx, b, dest)
+	return doGet(ctx, tx.Tx, b, dest)
 }
 
 // Exec using this transaction.
 func (tx *Tx) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
-	return Exec(ctx, tx.Tx, b)
+	return doExec(ctx, tx.Tx, b)
 }
 
 // Must Exec using this transaction and panic on error.
 func (tx *Tx) MustExec(ctx context.Context, b builder.Builder) sql.Result {
-	return MustExec(ctx, tx.Tx, b)
+	return doMustExec(ctx, tx.Tx, b)
 }
 
 // Commit this transaction.
@@ -249,22 +217,22 @@ func (conn *Conn) Close() error {
 
 // Select using this connection.
 func (conn *Conn) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Select(ctx, conn.Conn, b, dest)
+	return doSelect(ctx, conn.Conn, b, dest)
 }
 
 // Get using this connection.
 func (conn *Conn) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Get(ctx, conn.Conn, b, dest)
+	return doGet(ctx, conn.Conn, b, dest)
 }
 
 // Exec using this connection.
 func (conn *Conn) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
-	return Exec(ctx, conn.Conn, b)
+	return doExec(ctx, conn.Conn, b)
 }
 
 // MustExec using this connection. This method will panic on error.
 func (conn *Conn) MustExec(ctx context.Context, b builder.Builder) sql.Result {
-	return MustExec(ctx, conn.Conn, b)
+	return doMustExec(ctx, conn.Conn, b)
 }
 
 // Begin starts a new transaction using this connection.
@@ -310,22 +278,22 @@ type Stmt struct {
 
 // Select using this Stmt.
 func (stmt *Stmt) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Select(ctx, stmtWrapper{stmt.Stmt}, b, dest)
+	return doSelect(ctx, stmtWrapper{stmt.Stmt}, b, dest)
 }
 
 // Get using this Stmt.
 func (stmt *Stmt) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return Get(ctx, stmtWrapper{stmt.Stmt}, b, dest)
+	return doGet(ctx, stmtWrapper{stmt.Stmt}, b, dest)
 }
 
 // Exec using this Stmt.
 func (stmt *Stmt) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
-	return Exec(ctx, stmtWrapper{stmt.Stmt}, b)
+	return doExec(ctx, stmtWrapper{stmt.Stmt}, b)
 }
 
 // MustExec using this Stmt. This method will panic on error.
 func (stmt *Stmt) MustExec(ctx context.Context, b builder.Builder) sql.Result {
-	return MustExec(ctx, stmtWrapper{stmt.Stmt}, b)
+	return doMustExec(ctx, stmtWrapper{stmt.Stmt}, b)
 }
 
 // stmtWrapper is an unexported wrapper which implements Queryer and Execer by
@@ -348,7 +316,54 @@ func (w stmtWrapper) ExecContext(ctx context.Context, query string, args ...inte
 	return w.Stmt.ExecContext(ctx, args...)
 }
 
+// doSelect builds the query using the provided builder, executes it with queryer and
+// scans each row into dest, which must be a slice. If the slice elements are scannable,
+// then the result set must have only one column. Otherwise, sqlx.StructScan is used.
+func doSelect(ctx context.Context, q sqlx.QueryerContext, b builder.Builder, dest interface{}) error {
+	start := time.Now()
+	sql, params, err := b.Build()
+	if err != nil {
+		return err
+	}
+	defer logSql(start, sql, params)
+	return sqlx.SelectContext(ctx, q, dest, sql, params...)
+}
+
+// doGet builds the query using the provided builder, executes it with queryer and scans the
+// resulting row to dest. If dest is scannable, the result must only have one column. Otherwise,
+// sqlx.StructScan is used. Get will return sql.ErrNoRows if the result set is empty.
+func doGet(ctx context.Context, q sqlx.QueryerContext, b builder.Builder, dest interface{}) error {
+	start := time.Now()
+	sql, params, err := b.Build()
+	if err != nil {
+		return err
+	}
+	defer logSql(start, sql, params)
+	return sqlx.GetContext(ctx, q, dest, sql, params...)
+}
+
+// doExec builds the query using the provided builder and executes it with execer.
+func doExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) (sql.Result, error) {
+	start := time.Now()
+	sql, params, err := b.Build()
+	if err != nil {
+		return nil, err
+	}
+	defer logSql(start, sql, params)
+	return e.ExecContext(ctx, sql, params...)
+}
+
+// doMustExec builds the query using the provided builder and executes it with execer.
+// It will panic if there was an error.
+func doMustExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) sql.Result {
+	res, err := doExec(ctx, e, b)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
 func logSql(start time.Time, sql string, params []interface{}) {
 	elapsed := time.Since(start)
-	log.Infof("%q %v %v", sql, params, elapsed)
+	log.Printf("%q %v %v", sql, params, elapsed)
 }

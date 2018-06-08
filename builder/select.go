@@ -12,8 +12,8 @@ type selecter struct {
 	from     []string
 	where    conds
 	params   []interface{}
-	offset   int
-	limit    int
+	offset   uint64
+	limit    uint64
 	distinct []string
 	groupby  []string
 	orderby  []string
@@ -35,12 +35,12 @@ func (b *selecter) Where(expr string, params ...interface{}) Selecter {
 	return b
 }
 
-func (b *selecter) Offset(offset int) Selecter {
+func (b *selecter) Offset(offset uint64) Selecter {
 	b.offset = offset
 	return b
 }
 
-func (b *selecter) Limit(limit int) Selecter {
+func (b *selecter) Limit(limit uint64) Selecter {
 	b.limit = limit
 	return b
 }
@@ -65,6 +65,11 @@ func (b *selecter) Having(expr string, params ...interface{}) Selecter {
 
 func (b *selecter) OrderBy(expr string) Selecter {
 	b.orderby = append(b.orderby, expr)
+	return b
+}
+
+func (b *selecter) ForUpdate() Selecter {
+	// TODO
 	return b
 }
 
@@ -200,13 +205,13 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	// offset
 	if b.offset > 0 {
 		buf.WriteString(" OFFSET ")
-		buf.WriteString(strconv.Itoa(b.offset))
+		buf.WriteString(strconv.FormatUint(b.offset, 10))
 	}
 
 	// limit
 	if b.limit > 0 {
 		buf.WriteString(" LIMIT ")
-		buf.WriteString(strconv.Itoa(b.limit))
+		buf.WriteString(strconv.FormatUint(b.limit, 10))
 	}
 
 	return buf.String(), params, nil

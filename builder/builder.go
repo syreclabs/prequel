@@ -15,12 +15,13 @@ type Selecter interface {
 	With(name string, query Selecter) Selecter
 	From(from string) Selecter
 	Where(cond string, param ...interface{}) Selecter
-	Offset(offset int) Selecter
-	Limit(limit int) Selecter
+	Offset(offset uint64) Selecter
+	Limit(limit uint64) Selecter
 	Distinct(expr ...string) Selecter
 	GroupBy(expr string) Selecter
 	Having(cond string, param ...interface{}) Selecter
 	OrderBy(expr string) Selecter
+	ForUpdate() Selecter
 }
 
 // Updater is an UPDATE statement builder.
