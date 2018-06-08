@@ -21,7 +21,7 @@ type Selecter interface {
 	GroupBy(expr string) Selecter
 	Having(cond string, param ...interface{}) Selecter
 	OrderBy(expr string) Selecter
-	ForUpdate() Selecter
+	For(locking string) Selecter
 }
 
 // Updater is an UPDATE statement builder.

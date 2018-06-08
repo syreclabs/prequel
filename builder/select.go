@@ -18,6 +18,7 @@ type selecter struct {
 	groupby  []string
 	orderby  []string
 	having   conds
+	locking  string
 }
 
 func (b *selecter) With(name string, query Selecter) Selecter {
@@ -68,8 +69,8 @@ func (b *selecter) OrderBy(expr string) Selecter {
 	return b
 }
 
-func (b *selecter) ForUpdate() Selecter {
-	// TODO
+func (b *selecter) For(locking string) Selecter {
+	b.locking = locking
 	return b
 }
 
@@ -212,6 +213,12 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	if b.limit > 0 {
 		buf.WriteString(" LIMIT ")
 		buf.WriteString(strconv.FormatUint(b.limit, 10))
+	}
+
+	// for
+	if b.locking != "" {
+		buf.WriteString(" FOR ")
+		buf.WriteString(b.locking)
 	}
 
 	return buf.String(), params, nil
