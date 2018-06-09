@@ -19,5 +19,5 @@ func newDefaultLogger() Logger {
 }
 
 func (l *defaultLogger) Printf(format string, v ...interface{}) {
-	l.logger.Infof(format, v...)
+	l.logger.Debugf(format, v...)
 }

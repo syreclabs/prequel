@@ -365,5 +365,5 @@ func doMustExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) sq
 
 func logSql(start time.Time, sql string, params []interface{}) {
 	elapsed := time.Since(start)
-	log.Printf("%q %v %v", sql, params, elapsed)
+	log.Printf("%s %v %v", sql, params, elapsed)
 }
