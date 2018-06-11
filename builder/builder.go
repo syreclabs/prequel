@@ -30,7 +30,6 @@ type Updater interface {
 	With(name string, query Selecter) Updater
 	From(from string) Updater
 	Set(expr string, param ...interface{}) Updater
-	SetExcluded(cols ...string) Updater
 	Where(cond string, param ...interface{}) Updater
 	Returning(expr ...string) Updater
 }
@@ -39,11 +38,22 @@ type Updater interface {
 type Inserter interface {
 	Builder
 	With(name string, query Selecter) Inserter
-	Columns(expr ...string) Inserter
+	Columns(cols ...string) Inserter
 	Values(param ...interface{}) Inserter
 	From(query Selecter) Inserter
-	OnConflict(query Conflicter) Inserter
+	OnConflictDoNothing(target string, param ...interface{}) Inserter
 	Returning(expr ...string) Inserter
+}
+
+// Upserter is an INSERT statement builder.
+type Upserter interface {
+	Builder
+	With(name string, query Selecter) Upserter
+	Columns(cols ...string) Upserter
+	Values(param ...interface{}) Upserter
+	From(query Selecter) Upserter
+	Update(update string, param ...interface{}) Upserter // unless specified, Columns with EXCLUDED values used
+	Returning(expr ...string) Upserter
 }
 
 // Deleter is a DELETE statement builder.
@@ -55,42 +65,22 @@ type Deleter interface {
 	Returning(expr ...string) Deleter
 }
 
-// Conflicter is an ON CONFLICT statement builder for INSERT
-type Conflicter interface {
-	Builder
-	Target(target string) Conflicter
-	Where(cond string, param ...interface{}) Conflicter
-	Update(query Updater) Conflicter // Upsert should be used
-}
-
 func Select(expr ...string) Selecter {
 	return &selecter{expr: expr}
 }
 
-func Update(table string) Updater {
-	return &updater{table: table, upsert: false}
-}
-
-func Upsert() Updater {
-	return &updater{table: "", upsert: true}
-}
-
 func Insert(table string) Inserter {
-	return &inserter{into: table}
+	return &inserter{into: table, onConflictDoNothing: false}
+}
+
+func Update(table string) Updater {
+	return &updater{table: table}
+}
+
+func Upsert(table, target string, param ...interface{}) Upserter {
+	return &upserter{into: table, onConflictTarget: &cond{target, param}}
 }
 
 func Delete(table string) Deleter {
 	return &deleter{from: table}
-}
-
-// func Conflict(action, target, constraint string) Conflicter {
-// 	return &conflicter{action: action, target: target, constraint: constraint}
-// }
-
-func DoNothing() Conflicter {
-	return &conflicter{action: onConflictNothing}
-}
-
-func DoUpdate() Conflicter {
-	return &conflicter{action: onConflictUpdate}
 }

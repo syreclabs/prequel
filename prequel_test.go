@@ -45,7 +45,8 @@ var schema = struct {
 		first_name varchar(30),
 		last_name text,
 		email text,
-		created_at timestamp without time zone default now()
+		created_at timestamp without time zone default now(),
+		UNIQUE(email)
 	);`,
 
 	`drop table users;`,
@@ -235,7 +236,160 @@ func TestExecInsert(t *testing.T) {
 				t.Fatal(err)
 			}
 			if rows != 3 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 3, rows)
+			}
+		})
+
+		t.Run("OnConflict", func(t *testing.T) {
+			t.Run("WithoutTarget", func(t *testing.T) {
+				b := builder.
+					Insert("users").
+					Columns("first_name", "last_name", "email").
+					Values("Wax", "Rockatansky", "maxrockatansky@notmail.me").
+					OnConflictDoNothing("")
+
+				res, err := db.Exec(ctx, b)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rows, err := res.RowsAffected()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rows != 0 {
+					t.Fatalf("expected RowsAffected to be %d, got %d", 0, rows)
+				}
+			})
+
+			t.Run("WithSimpleTarget", func(t *testing.T) {
+				for _, target := range []string{"(email)", "ON CONSTRAINT users_email_key"} {
+					b := builder.
+						Insert("users").
+						Columns("first_name", "last_name", "email").
+						Values("Wax", "Rockatansky", "maxrockatansky@notmail.me").
+						OnConflictDoNothing(target)
+
+					res, err := db.Exec(ctx, b)
+					if err != nil {
+						t.Fatal(err)
+					}
+					rows, err := res.RowsAffected()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if rows != 0 {
+						t.Fatalf("expected RowsAffected to be %d, got %d", 0, rows)
+					}
+				}
+			})
+
+			t.Run("WithComplexTarget", func(t *testing.T) {
+				b := builder.
+					Insert("users").
+					Columns("first_name", "last_name", "email").
+					Values("Wax", "Rockatansky", "maxrockatansky@notmail.me").
+					OnConflictDoNothing("(email) WHERE email != $1", "janie@notmail.me")
+
+				res, err := db.Exec(ctx, b)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rows, err := res.RowsAffected()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rows != 0 {
+					t.Fatalf("expected RowsAffected to be %d, got %d", 0, rows)
+				}
+			})
+		})
+	})
+}
+
+func TestExecUpsert(t *testing.T) {
+	withSchema(context.Background(), func(ctx context.Context) {
+		loadFixtures(ctx)
+
+		t.Run("SimpleTarget", func(t *testing.T) {
+			for _, target := range []string{"(email)", "ON CONSTRAINT users_email_key"} {
+				b := builder.
+					Upsert("users", target).
+					Columns("first_name", "last_name", "email").
+					Values("Simple", "Last", "user@example.com")
+
+				res, err := db.Exec(ctx, b)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rows, err := res.RowsAffected()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rows != 1 {
+					t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+				}
+			}
+		})
+
+		t.Run("ComplexTarget", func(t *testing.T) {
+			b := builder.
+				Upsert("users", "(email) WHERE email != $1", "janie@notmail.me").
+				Columns("first_name", "last_name", "email").
+				Values("Complex", "Last", "user@example.com")
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
 				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
+
+		t.Run("Multiple", func(t *testing.T) {
+			b := builder.
+				Upsert("users", "(email)").
+				Columns("first_name", "last_name", "email").
+				Values("Jane", "Doe", "janie@notmail.me").
+				Values("John", "Roe", "john@notmail.me").
+				Values("Max", "Rockatansky", "user@example.com")
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 3 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 3, rows)
+			}
+		})
+
+		t.Run("CustomUpdate", func(t *testing.T) {
+			b := builder.
+				Upsert("users", "(email)").
+				Columns("first_name", "last_name", "email").
+				Values("Jane", "Doe", "janie@notmail.me").
+				Values("John", "Roe", "john@notmail.me").
+				Values("Max", "Rockatansky", "user@example.com").
+				Update("first_name = (EXCLUDED.first_name || $1), last_name = EXCLUDED.last_name WHERE EXCLUDED.email != $2", "hm", "xxxx@notmail.me")
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 3 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 3, rows)
 			}
 		})
 	})

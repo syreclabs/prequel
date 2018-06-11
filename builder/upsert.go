@@ -7,51 +7,48 @@ import (
 	"strconv"
 )
 
-type inserter struct {
-	with                withs
-	into                string
-	columns             []string
-	values              [][]interface{}
-	from                Selecter
-	onConflictDoNothing bool
-	onConflictTarget    *cond
-	returning           []string
+type upserter struct {
+	with             withs
+	into             string
+	columns          []string
+	values           [][]interface{}
+	from             Selecter
+	onConflictTarget *cond
+	onConflictUpdate *cond
+	returning        []string
 }
 
-func (b *inserter) With(name string, query Selecter) Inserter {
+func (b *upserter) With(name string, query Selecter) Upserter {
 	b.with = append(b.with, &with{name, query})
 	return b
 }
 
-func (b *inserter) Columns(columns ...string) Inserter {
+func (b *upserter) Columns(columns ...string) Upserter {
 	b.columns = append(b.columns, columns...)
 	return b
 }
 
-func (b *inserter) Values(values ...interface{}) Inserter {
+func (b *upserter) Values(values ...interface{}) Upserter {
 	b.values = append(b.values, values)
 	return b
 }
 
-func (b *inserter) From(query Selecter) Inserter {
+func (b *upserter) From(query Selecter) Upserter {
 	b.from = query
 	return b
 }
 
-func (b *inserter) OnConflictDoNothing(target string, params ...interface{}) Inserter {
-	b.onConflictDoNothing = true
-	if target != "" {
-		b.onConflictTarget = &cond{target, params}
-	}
+func (b *upserter) Update(update string, params ...interface{}) Upserter {
+	b.onConflictUpdate = &cond{update, params}
 	return b
 }
 
-func (b *inserter) Returning(returning ...string) Inserter {
+func (b *upserter) Returning(returning ...string) Upserter {
 	b.returning = append(b.returning, returning...)
 	return b
 }
 
-func (b *inserter) Build() (string, []interface{}, error) {
+func (b *upserter) Build() (string, []interface{}, error) {
 	// verify
 	if len(b.columns) > 0 && len(b.values) > 0 {
 		for _, row := range b.values {
@@ -63,6 +60,28 @@ func (b *inserter) Build() (string, []interface{}, error) {
 
 	if b.from != nil && len(b.values) > 0 {
 		return "", nil, errors.New("values must be empty if from is specified")
+	}
+
+	if b.onConflictTarget != nil {
+		if isEmpty(b.onConflictTarget.expr) {
+			return "", nil, errors.New("empty ON CONFLICT target")
+		}
+	}
+
+	if b.onConflictUpdate != nil {
+		if b.onConflictTarget == nil {
+			return "", nil, errors.New("empty ON CONFLICT target")
+		}
+
+		if isEmpty(b.onConflictUpdate.expr) {
+			return "", nil, errors.New("empty ON CONFLICT update statement")
+		}
+	}
+
+	if b.onConflictTarget != nil && b.onConflictUpdate == nil {
+		if len(b.columns) == 0 {
+			return "", nil, errors.New("columns required for empty ON CONFLICT update statement")
+		}
 	}
 
 	// build
@@ -146,21 +165,37 @@ func (b *inserter) Build() (string, []interface{}, error) {
 	}
 
 	// on conflict: do nothing
-	if b.onConflictDoNothing {
+	if b.onConflictTarget != nil {
 		buf.WriteString(" ON CONFLICT ")
 
-		if b.onConflictTarget != nil {
+		// validate and rename target condition
+		if _, err := b.onConflictTarget.build(len(params) + 1); err != nil {
+			return "", nil, err
+		}
+		buf.WriteString(b.onConflictTarget.expr)
+		params = append(params, b.onConflictTarget.params...)
+
+		buf.WriteString(" DO UPDATE SET ")
+
+		// use update statement if provided
+		if b.onConflictUpdate != nil {
 			// validate and rename target condition
-			if _, err := b.onConflictTarget.build(len(params) + 1); err != nil {
+			if _, err := b.onConflictUpdate.build(len(params) + 1); err != nil {
 				return "", nil, err
 			}
-			buf.WriteString(b.onConflictTarget.expr)
-			buf.WriteRune(' ')
 
-			params = append(params, b.onConflictTarget.params...)
+			buf.WriteString(b.onConflictUpdate.expr)
+			params = append(params, b.onConflictUpdate.params...)
+		} else {
+			// otherwise generate EXCLUDED for columns
+			for i, col := range b.columns {
+				if i > 0 {
+					buf.WriteString(", ")
+				}
+
+				buf.WriteString(fmt.Sprintf("%s = EXCLUDED.%s", col, col))
+			}
 		}
-
-		buf.WriteString("DO NOTHING")
 	}
 
 	// returning
