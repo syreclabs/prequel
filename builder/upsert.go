@@ -129,18 +129,23 @@ func (b *upserter) Build() (string, []interface{}, error) {
 			if j > 0 {
 				buf.WriteString(", ")
 			}
-
-			params = append(params, row...)
 			buf.WriteString("(")
-			for i, _ := range row {
+			for i, v := range row {
 				if i > 0 {
 					buf.WriteString(", ")
 				}
-				buf.WriteRune('$')
-				buf.WriteString(strconv.Itoa(j*len(row) + i + 1))
+				if _, ok := v.(DefaultValue); ok {
+					fmt.Printf("== DEFAULT ==> %#v\n", v)
+					buf.WriteString("DEFAULT")
+				} else {
+					params = append(params, v)
+					buf.WriteRune('$')
+					buf.WriteString(strconv.Itoa(len(params)))
+				}
 			}
 			buf.WriteRune(')')
 		}
+
 	}
 
 	if b.from != nil {

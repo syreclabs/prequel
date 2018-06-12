@@ -1,5 +1,9 @@
 package builder
 
+import (
+	"reflect"
+)
+
 // TODO: support DEFAULT as value for insert/update for column
 
 // Builder interface is implemented by all specialized builders below and is used to
@@ -41,7 +45,7 @@ type Inserter interface {
 	Columns(cols ...string) Inserter
 	Values(param ...interface{}) Inserter
 	From(query Selecter) Inserter
-	OnConflictDoNothing(target string, param ...interface{}) Inserter
+	OnConflictDoNothing(target string, params ...interface{}) Inserter
 	Returning(expr ...string) Inserter
 }
 
@@ -83,4 +87,40 @@ func Upsert(table, target string, param ...interface{}) Upserter {
 
 func Delete(table string) Deleter {
 	return &deleter{from: table}
+}
+
+type DefaultValue struct{}
+
+func (dv DefaultValue) String() string {
+	return "<DEFAULT>"
+}
+
+// func (dv DefaultValue) Value() (driver.Value, error) {
+// 	return nil, nil
+// }
+
+func Default(value interface{}) interface{} {
+	switch v := value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		if v == 0 {
+			return DefaultValue{}
+		}
+	case string:
+		if v == "" {
+			return DefaultValue{}
+		}
+	default:
+		switch reflect.TypeOf(v).Kind() {
+		case reflect.Ptr:
+			if reflect.ValueOf(v).IsNil() {
+				return DefaultValue{}
+			}
+		case reflect.Slice, reflect.Map, reflect.Array:
+			if reflect.ValueOf(v).Len() == 0 {
+				return DefaultValue{}
+			}
+		}
+	}
+
+	return value
 }

@@ -350,6 +350,49 @@ func TestExecUpsert(t *testing.T) {
 			}
 		})
 
+		t.Run("InsertEmptyPrimaryKey", func(t *testing.T) {
+			user := &User{
+				FirstName: "EmptyPrimaryKey",
+				LastName:  "Last",
+				Email:     "user0@example.com",
+			}
+			b := builder.
+				Upsert("users", "(id)").
+				Columns("id", "first_name", "last_name", "email").
+				Values(builder.Default(user.Id), user.FirstName, user.LastName, user.Email)
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
+
+		t.Run("UpsertPrimaryKeyViolation", func(t *testing.T) {
+			b := builder.
+				Upsert("users", "(id)").
+				Columns("id", "first_name", "last_name", "email").
+				Values(builder.Default(1), "PrimaryKeyViolation", "Last", "user@example.com")
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
+
 		t.Run("Multiple", func(t *testing.T) {
 			b := builder.
 				Upsert("users", "(email)").
