@@ -464,37 +464,95 @@ func TestExecUpsert(t *testing.T) {
 	})
 }
 
-// func TestExecInsect(t *testing.T) {
-// 	withSchema(context.Background(), func(ctx context.Context) {
-// 		loadFixtures(ctx)
+func TestExecInsect(t *testing.T) {
+	withSchema(context.Background(), func(ctx context.Context) {
+		loadFixtures(ctx)
 
-// 		b := builder.
-// 			Select("*").
-// 			From("new_row").
-// 			With("new_row",
-// 				builder.
-// 					Insert("users").
-// 					Columns("first_name", "last_name", "email").
-// 					From("a", "b", "user@example.com"))
-// 		Union(true,
-// 			builder.
-// 				Select("*").
-// 				From("users").
-// 				Where("email = $1", "user@example.com"))
+		// existing user
+		b := builder.
+			Select("id", "first_name", "last_name", "email").
+			From("users").
+			Where("email = $1", "user@example.com")
 
-// 		res, err := db.Exec(ctx, b)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		rows, err := res.RowsAffected()
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		if rows != 1 {
-// 			t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
-// 		}
-// 	})
-// }
+		var existingUser User
+		if err := db.Get(ctx, b, &existingUser); err != nil {
+			t.Fatal(err)
+		}
+		if existingUser.Email != "user@example.com" {
+			t.Fatalf("expected Email %q, got %q", "john@mail.net", existingUser.Email)
+		}
+
+		t.Run("RecordExists", func(t *testing.T) {
+			b := builder.
+				Select("*").From("ins").
+				Union(true, builder.Select("*").From("sel")).
+				With("sel", builder.
+					Select("*").
+					From("users").
+					Where("email = $1", existingUser.Email)).
+				With("ins", builder.
+					Insert("users").
+					Columns("first_name", "last_name", "email").
+					From(builder.
+						Select().
+						Columns("$1, $2, $3", existingUser.FirstName, existingUser.LastName, existingUser.Email).
+						Where("NOT EXISTS(SELECT * FROM sel)")).
+					Returning("*"))
+
+			var users []*User
+			if err := db.Select(ctx, b, &users); err != nil {
+				t.Fatal(err)
+			}
+			if len(users) != 1 {
+				t.Fatalf("expected %d records, got %d", 1, len(users))
+			}
+
+			if users[0].Id != 1 {
+				t.Fatalf("expected first user with ID (%d), got (%d)", 1, users[0].Id)
+			}
+
+			if users[0].Email != "user@example.com" {
+				t.Fatalf("expected first user with Email (%s), got (%s)", "user@example.com", users[0].Email)
+			}
+		})
+
+		t.Run("RecordNotExists", func(t *testing.T) {
+			newUser := &User{
+				FirstName: "New",
+				LastName:  "Last",
+				Email:     "user212121222221@example.com",
+			}
+
+			b := builder.
+				Select("*").From("ins").
+				Union(true, builder.Select("*").From("sel")).
+				With("sel", builder.
+					Select("*").
+					From("users").
+					Where("email = $1", newUser.Email)).
+				With("ins", builder.
+					Insert("users").
+					Columns("first_name", "last_name", "email").
+					From(builder.
+						Select().
+						Columns("$1, $2, $3", newUser.FirstName, newUser.LastName, newUser.Email).
+						Where("NOT EXISTS(SELECT * FROM sel)")).
+					Returning("*"))
+
+			var users []*User
+			if err := db.Select(ctx, b, &users); err != nil {
+				t.Fatal(err)
+			}
+			if len(users) != 1 {
+				t.Fatalf("expected %d records, got %d", 1, len(users))
+			}
+
+			if users[0].Email != newUser.Email {
+				t.Fatalf("expected first user with Email (%s), got (%s)", newUser.Email, users[0].Email)
+			}
+		})
+	})
+}
 
 func TestExecUpdate(t *testing.T) {
 	withSchema(context.Background(), func(ctx context.Context) {

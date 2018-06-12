@@ -15,7 +15,7 @@ type unions []*union
 type selecter struct {
 	with     withs
 	distinct []string
-	expr     []string
+	expr     conds
 	from     []string
 	where    conds
 	groupby  []string
@@ -29,6 +29,11 @@ type selecter struct {
 
 func (b *selecter) With(name string, query Builder) Selecter {
 	b.with = append(b.with, &with{name, query})
+	return b
+}
+
+func (b *selecter) Columns(expr string, params ...interface{}) Selecter {
+	b.expr = append(b.expr, &cond{expr, params})
 	return b
 }
 
@@ -124,21 +129,30 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	}
 
 	// select expr
-	buf.WriteRune(' ')
-	for i, x := range b.expr {
-		if i > 0 {
-			buf.WriteString(", ")
+	if len(b.expr) > 0 {
+		buf.WriteRune(' ')
+		// validate and rename where conditions
+		if err := b.expr.build(len(params) + 1); err != nil {
+			return "", nil, err
 		}
-		buf.WriteString(x)
-	}
+		for i, x := range b.expr {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			params = append(params, x.params...)
+			buf.WriteString(x.expr)
+		}
 
-	// from
-	buf.WriteString(" FROM ")
-	for i, x := range b.from {
-		if i > 0 {
-			buf.WriteRune(' ')
+		// from
+		if len(b.from) > 0 {
+			buf.WriteString(" FROM ")
+			for i, x := range b.from {
+				if i > 0 {
+					buf.WriteRune(' ')
+				}
+				buf.WriteString(x)
+			}
 		}
-		buf.WriteString(x)
 	}
 
 	if len(b.where) > 0 {
