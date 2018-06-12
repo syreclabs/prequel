@@ -154,4 +154,20 @@ func TestSelect(t *testing.T) {
 
 		validateGeneratedSql(t, sql, expectedSql, len(params), 2)
 	})
+
+	t.Run("WithUnions", func(t *testing.T) {
+		expectedSql := "SELECT a, b FROM table1 UNION SELECT c as 'a', d as 'b' FROM table2 UNION ALL SELECT e as 'a', f as 'b' FROM table3 ORDER BY a"
+		b := Select("a, b").
+			From("table1").
+			Union(false, Select("c as 'a', d as 'b'").From("table2")).
+			Union(true, Select("e as 'a', f as 'b'").From("table3")).
+			OrderBy("a")
+
+		sql, params, err := b.Build()
+		if err != nil {
+			t.Fatalf("expected err to be nil, got %v", err)
+		}
+
+		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+	})
 }

@@ -18,7 +18,7 @@ type inserter struct {
 	returning           []string
 }
 
-func (b *inserter) With(name string, query Selecter) Inserter {
+func (b *inserter) With(name string, query Builder) Inserter {
 	b.with = append(b.with, &with{name, query})
 	return b
 }

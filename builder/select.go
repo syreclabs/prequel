@@ -5,22 +5,29 @@ import (
 	"strconv"
 )
 
+type union struct {
+	all   bool
+	query Selecter
+}
+
+type unions []*union
+
 type selecter struct {
 	with     withs
+	distinct []string
 	expr     []string
 	from     []string
 	where    conds
-	params   []interface{}
+	groupby  []string
+	having   conds
+	union    unions
+	orderby  []string
 	offset   uint64
 	limit    uint64
-	distinct []string
-	groupby  []string
-	orderby  []string
-	having   conds
 	locking  string
 }
 
-func (b *selecter) With(name string, query Selecter) Selecter {
+func (b *selecter) With(name string, query Builder) Selecter {
 	b.with = append(b.with, &with{name, query})
 	return b
 }
@@ -32,16 +39,6 @@ func (b *selecter) From(from string) Selecter {
 
 func (b *selecter) Where(expr string, params ...interface{}) Selecter {
 	b.where = append(b.where, &cond{expr, params})
-	return b
-}
-
-func (b *selecter) Offset(offset uint64) Selecter {
-	b.offset = offset
-	return b
-}
-
-func (b *selecter) Limit(limit uint64) Selecter {
-	b.limit = limit
 	return b
 }
 
@@ -63,8 +60,23 @@ func (b *selecter) Having(expr string, params ...interface{}) Selecter {
 	return b
 }
 
+func (b *selecter) Union(all bool, query Selecter) Selecter {
+	b.union = append(b.union, &union{all, query})
+	return b
+}
+
 func (b *selecter) OrderBy(expr string) Selecter {
 	b.orderby = append(b.orderby, expr)
+	return b
+}
+
+func (b *selecter) Offset(offset uint64) Selecter {
+	b.offset = offset
+	return b
+}
+
+func (b *selecter) Limit(limit uint64) Selecter {
+	b.limit = limit
 	return b
 }
 
@@ -170,6 +182,31 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
+		}
+	}
+
+	// union
+	for _, union := range b.union {
+		buf.WriteString(" UNION ")
+		if union.all {
+			buf.WriteString("ALL ")
+		}
+
+		// prepare query
+		sql, pps, err := union.query.Build()
+		if err != nil {
+			return "", nil, err
+		}
+
+		// validate and rename params
+		c := &cond{sql, pps}
+		if _, err := c.build(len(params) + 1); err != nil {
+			return "", nil, err
+		}
+
+		buf.WriteString(c.expr)
+		if len(c.params) > 0 {
+			params = append(params, c.params...)
 		}
 	}
 

@@ -16,9 +16,10 @@ type Builder interface {
 // Selecter is a SELECT statement builder.
 type Selecter interface {
 	Builder
-	With(name string, query Selecter) Selecter
+	With(name string, query Builder) Selecter
 	From(from string) Selecter
 	Where(cond string, param ...interface{}) Selecter
+	Union(all bool, query Selecter) Selecter
 	Offset(offset uint64) Selecter
 	Limit(limit uint64) Selecter
 	Distinct(expr ...string) Selecter
@@ -31,7 +32,7 @@ type Selecter interface {
 // Updater is an UPDATE statement builder.
 type Updater interface {
 	Builder
-	With(name string, query Selecter) Updater
+	With(name string, query Builder) Updater
 	From(from string) Updater
 	Set(expr string, param ...interface{}) Updater
 	Where(cond string, param ...interface{}) Updater
@@ -41,7 +42,7 @@ type Updater interface {
 // Inserter is an INSERT statement builder.
 type Inserter interface {
 	Builder
-	With(name string, query Selecter) Inserter
+	With(name string, query Builder) Inserter
 	Columns(cols ...string) Inserter
 	Values(param ...interface{}) Inserter
 	From(query Selecter) Inserter
@@ -52,7 +53,7 @@ type Inserter interface {
 // Upserter is an INSERT statement builder.
 type Upserter interface {
 	Builder
-	With(name string, query Selecter) Upserter
+	With(name string, query Builder) Upserter
 	Columns(cols ...string) Upserter
 	Values(param ...interface{}) Upserter
 	From(query Selecter) Upserter
@@ -63,7 +64,7 @@ type Upserter interface {
 // Deleter is a DELETE statement builder.
 type Deleter interface {
 	Builder
-	With(name string, query Selecter) Deleter
+	With(name string, query Builder) Deleter
 	Using(using string) Deleter
 	Where(cond string, param ...interface{}) Deleter
 	Returning(expr ...string) Deleter

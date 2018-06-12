@@ -19,7 +19,7 @@ type updater struct {
 	returning []string
 }
 
-func (b *updater) With(name string, query Selecter) Updater {
+func (b *updater) With(name string, query Builder) Updater {
 	b.with = append(b.with, &with{name, query})
 	return b
 }

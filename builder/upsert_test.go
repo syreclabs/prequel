@@ -20,7 +20,7 @@ func TestUpsert(t *testing.T) {
 		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
 	})
 
-	t.Run("WithDefault", func(t *testing.T) {
+	t.Run("WithDefaultFirstParam", func(t *testing.T) {
 		expectedSql := "INSERT INTO table1 (a, b, c) VALUES (DEFAULT, $1, $2) ON CONFLICT (a) DO UPDATE SET a = EXCLUDED.a, b = EXCLUDED.b, c = EXCLUDED.c"
 		b := Upsert("table1", "(a)").
 			Columns("a", "b", "c").
@@ -32,6 +32,22 @@ func TestUpsert(t *testing.T) {
 		}
 
 		validateGeneratedSql(t, sql, expectedSql, len(params), 2)
+	})
+
+	t.Run("WithDefaultMidParam", func(t *testing.T) {
+		expectedSql := "INSERT INTO table1 (a, b, c) VALUES ($1, $2, $3), (DEFAULT, $4, $5), ($6, $7, $8) ON CONFLICT (a) DO UPDATE SET a = EXCLUDED.a, b = EXCLUDED.b, c = EXCLUDED.c"
+		b := Upsert("table1", "(a)").
+			Columns("a", "b", "c").
+			Values(1, "bbb", time.Now()).
+			Values(Default(0), "aaa", time.Now()).
+			Values(3, "ccc", time.Now())
+
+		sql, params, err := b.Build()
+		if err != nil {
+			t.Fatalf("expected err to be nil, got %v", err)
+		}
+
+		validateGeneratedSql(t, sql, expectedSql, len(params), 8)
 	})
 
 	t.Run("WithReturning", func(t *testing.T) {

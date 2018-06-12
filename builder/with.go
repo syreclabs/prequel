@@ -7,8 +7,9 @@ import (
 
 type with struct {
 	name  string
-	query Selecter
+	query Builder
 }
+
 type withs []*with
 
 func (b withs) build() (string, []interface{}, error) {

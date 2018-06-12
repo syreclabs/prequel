@@ -18,7 +18,7 @@ type upserter struct {
 	returning        []string
 }
 
-func (b *upserter) With(name string, query Selecter) Upserter {
+func (b *upserter) With(name string, query Builder) Upserter {
 	b.with = append(b.with, &with{name, query})
 	return b
 }

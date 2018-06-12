@@ -13,7 +13,7 @@ type deleter struct {
 	returning []string
 }
 
-func (b *deleter) With(name string, query Selecter) Deleter {
+func (b *deleter) With(name string, query Builder) Deleter {
 	b.with = append(b.with, &with{name, query})
 	return b
 }

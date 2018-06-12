@@ -156,6 +156,32 @@ func TestSelectWhere(t *testing.T) {
 			}
 		})
 
+		t.Run("Union", func(t *testing.T) {
+			b := builder.
+				Select("id", "first_name", "last_name", "email").
+				From("users").
+				Where("id = $1", 1).
+				Union(false,
+					builder.
+						Select("id", "first_name", "last_name", "email").
+						From("users").
+						Where("id IN ($1)", []int64{1, 2})).
+				Union(true,
+					builder.
+						Select("id", "first_name", "last_name", "email").
+						From("users").
+						Where("id IN ($1)", []int64{1, 2})).
+				OrderBy("id")
+
+			var users []*User
+			if err := db.Select(ctx, b, &users); err != nil {
+				t.Fatal(err)
+			}
+			if len(users) != 4 {
+				t.Fatalf("expected %d records, got %d", 4, len(users))
+			}
+		})
+
 		t.Run("In", func(t *testing.T) {
 			b := builder.
 				Select("first_name", "last_name", "email").
@@ -437,6 +463,38 @@ func TestExecUpsert(t *testing.T) {
 		})
 	})
 }
+
+// func TestExecInsect(t *testing.T) {
+// 	withSchema(context.Background(), func(ctx context.Context) {
+// 		loadFixtures(ctx)
+
+// 		b := builder.
+// 			Select("*").
+// 			From("new_row").
+// 			With("new_row",
+// 				builder.
+// 					Insert("users").
+// 					Columns("first_name", "last_name", "email").
+// 					From("a", "b", "user@example.com"))
+// 		Union(true,
+// 			builder.
+// 				Select("*").
+// 				From("users").
+// 				Where("email = $1", "user@example.com"))
+
+// 		res, err := db.Exec(ctx, b)
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 		rows, err := res.RowsAffected()
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 		if rows != 1 {
+// 			t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+// 		}
+// 	})
+// }
 
 func TestExecUpdate(t *testing.T) {
 	withSchema(context.Background(), func(ctx context.Context) {
