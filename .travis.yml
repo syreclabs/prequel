@@ -1,0 +1,19 @@
+---
+language: go
+
+go:
+  - "1.10.x"
+  - master
+
+addons:
+  postgresql: "9.6"
+
+  services:
+  - postgresql
+
+before_script:
+  - psql -c 'create database prequel_test;' -U postgres
+
+env:
+  global:
+  - PREQUEL_TEST_DSN=postgres://localhost/prequel_test?sslmode=disable
