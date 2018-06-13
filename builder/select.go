@@ -142,16 +142,16 @@ func (b *selecter) Build() (string, []interface{}, error) {
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
 		}
+	}
 
-		// from
-		if len(b.from) > 0 {
-			buf.WriteString(" FROM ")
-			for i, x := range b.from {
-				if i > 0 {
-					buf.WriteRune(' ')
-				}
-				buf.WriteString(x)
+	// from
+	if len(b.from) > 0 {
+		buf.WriteString(" FROM ")
+		for i, x := range b.from {
+			if i > 0 {
+				buf.WriteRune(' ')
 			}
+			buf.WriteString(x)
 		}
 	}
 

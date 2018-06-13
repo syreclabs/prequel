@@ -90,9 +90,9 @@ func withSchema(ctx context.Context, testFunc func(ctx context.Context)) {
 
 func loadFixtures(ctx context.Context) {
 	tx := db.MustBegin(ctx)
-	tx.Tx.MustExec(tx.Tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "First", "Last", "user@example.com")
-	tx.Tx.MustExec(tx.Tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "Johnny", "Doe", "john@mail.net")
-	tx.Tx.MustExec(tx.Tx.Rebind("INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)"), "Janie", "Roe", "janie@email.com")
+	tx.Tx.MustExec("INSERT INTO users (first_name, last_name, email) VALUES ($1, $2, $3)", "First", "Last", "user@example.com")
+	tx.Tx.MustExec("INSERT INTO users (first_name, last_name, email) VALUES ($1, $2, $3)", "Johnny", "Doe", "john@mail.net")
+	tx.Tx.MustExec("INSERT INTO users (first_name, last_name, email) VALUES ($1, $2, $3)", "Janie", "Roe", "janie@email.com")
 	tx.Commit()
 }
 
