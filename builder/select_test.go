@@ -63,7 +63,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithConditions", func(t *testing.T) {
-		expectedSql := "SELECT * FROM table1 WHERE name = $1 AND $2 AND count > $3"
+		expectedSql := "SELECT * FROM table1 WHERE (name = $1 AND $2) AND (count > $3)"
 		b := Select("*").
 			From("table1").
 			Where("name = $2 AND $1", "x", true).
@@ -121,7 +121,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithHaving", func(t *testing.T) {
-		expectedSql := "SELECT a, MIN(b) FROM table1 WHERE c = $1 GROUP BY a HAVING MAX(c) > a AND a < $2"
+		expectedSql := "SELECT a, MIN(b) FROM table1 WHERE (c = $1) GROUP BY a HAVING MAX(c) > a AND a < $2"
 		b := Select("a, MIN(b)").
 			From("table1").
 			Where("c = $1", 1).
@@ -138,7 +138,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) SELECT * FROM table1 WHERE table2.id = table1.id AND $2 AND table2.name != 'bbb'"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) SELECT * FROM table1 WHERE (table2.id = table1.id) AND ($2 AND table2.name != 'bbb')"
 		b := Select("*").
 			With("table2", Select("id", "name").
 				From("table1").

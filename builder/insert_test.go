@@ -79,7 +79,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) INSERT INTO table1 SELECT * FROM table2 RETURNING *"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) INSERT INTO table1 SELECT * FROM table2 RETURNING *"
 		b := Insert("table1").
 			With("table2",
 				Select("id", "name").

@@ -99,7 +99,7 @@ func TestUpsert(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) INSERT INTO table1 SELECT * FROM table2 ON CONFLICT (a) WHERE a != $2 DO UPDATE SET a = EXCLUDED.a WHERE name != table2.name RETURNING *"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) INSERT INTO table1 SELECT * FROM table2 ON CONFLICT (a) WHERE a != $2 DO UPDATE SET a = EXCLUDED.a WHERE name != table2.name RETURNING *"
 		b := Upsert("table1", "(a) WHERE a != $1", "ddd").
 			With("table2",
 				Select("id", "name").

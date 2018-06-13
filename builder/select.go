@@ -131,7 +131,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	// select expr
 	if len(b.expr) > 0 {
 		buf.WriteRune(' ')
-		// validate and rename where conditions
+		// validate and rename SELECT expressions
 		if err := b.expr.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
@@ -155,20 +155,22 @@ func (b *selecter) Build() (string, []interface{}, error) {
 		}
 	}
 
+	// where
 	if len(b.where) > 0 {
 		// validate and rename where conditions
 		if err := b.where.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
-		buf.WriteString(" WHERE ")
+		buf.WriteString(" WHERE (")
 		for i, x := range b.where {
 			if i > 0 {
-				buf.WriteString(" AND ")
+				buf.WriteString(") AND (")
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
 		}
+		buf.WriteRune(')')
 	}
 
 	// group by

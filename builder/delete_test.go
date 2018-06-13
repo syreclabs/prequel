@@ -18,7 +18,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("WithConditions", func(t *testing.T) {
-		expectedSql := "DELETE FROM table1 WHERE cond1 = $1 AND cond2 = $2 AND $3"
+		expectedSql := "DELETE FROM table1 WHERE (cond1 = $1) AND (cond2 = $2 AND $3)"
 		b := Delete("table1").
 			Where("cond1 = $1", 1).
 			Where("cond2 = $2 AND $1", true, 2)
@@ -60,7 +60,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("WithUsing", func(t *testing.T) {
-		expectedSql := "DELETE FROM table1 USING table2 WHERE table2.id = table1.id AND cond1 = $1 AND cond2 = $2 AND $3"
+		expectedSql := "DELETE FROM table1 USING table2 WHERE (table2.id = table1.id) AND (cond1 = $1) AND (cond2 = $2 AND $3)"
 		b := Delete("table1").
 			Using("table2").
 			Where("table2.id = table1.id").
@@ -76,7 +76,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("Complex", func(t *testing.T) {
-		expectedSql := "DELETE FROM table1 USING table2 WHERE table2.id = table1.id AND cond1 = $1 AND cond2 = $2 AND $3 RETURNING id, name"
+		expectedSql := "DELETE FROM table1 USING table2 WHERE (table2.id = table1.id) AND (cond1 = $1) AND (cond2 = $2 AND $3) RETURNING id, name"
 		b := Delete("table1").
 			Using("table2").
 			Where("table2.id = table1.id").
@@ -93,7 +93,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1), table3 AS (SELECT id, name FROM table1 WHERE name = $2) DELETE FROM table1 WHERE table2.id = table1.id AND table3.id = table1.id AND name = $3 AND $4 RETURNING id, name"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)), table3 AS (SELECT id, name FROM table1 WHERE (name = $2)) DELETE FROM table1 WHERE (table2.id = table1.id) AND (table3.id = table1.id) AND (name = $3 AND $4) RETURNING id, name"
 		b := Delete("table1").
 			With("table2",
 				Select("id", "name").

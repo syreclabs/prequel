@@ -85,14 +85,15 @@ func (b *deleter) Build() (string, []interface{}, error) {
 			return "", nil, err
 		}
 
-		buf.WriteString(" WHERE ")
+		buf.WriteString(" WHERE (")
 		for i, x := range b.where {
 			if i > 0 {
-				buf.WriteString(" AND ")
+				buf.WriteString(") AND (")
 			}
 			params = append(params, x.params...)
 			buf.WriteString(x.expr)
 		}
+		buf.WriteRune(')')
 	}
 
 	// returning

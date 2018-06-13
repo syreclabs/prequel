@@ -36,7 +36,7 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("WithConditions", func(t *testing.T) {
-		expectedSql := "UPDATE table1 SET a = $1, b = $2, c = $3 WHERE name = $4 AND $5"
+		expectedSql := "UPDATE table1 SET a = $1, b = $2, c = $3 WHERE (name = $4 AND $5)"
 		b := Update("table1").
 			Set("a = $1", 1).
 			Set("b = $1", "bbb").
@@ -86,7 +86,7 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE name = $1) UPDATE table1 SET a = $2, b = table2.name, c = $3 RETURNING *"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) UPDATE table1 SET a = $2, b = table2.name, c = $3 RETURNING *"
 		b := Update("table1").
 			With("table2", Select("id", "name").
 				From("table1").
@@ -105,7 +105,7 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("Complex", func(t *testing.T) {
-		expectedSql := "UPDATE table1 AS t1 SET a = $1, b = $2, c = $3, d = t2.name FROM table2 AS t2 WHERE t1.id = t2.table1_id AND t1.name = $4 AND t2.name != $5 RETURNING t1.id, t1.name"
+		expectedSql := "UPDATE table1 AS t1 SET a = $1, b = $2, c = $3, d = t2.name FROM table2 AS t2 WHERE (t1.id = t2.table1_id AND t1.name = $4 AND t2.name != $5) RETURNING t1.id, t1.name"
 		b := Update("table1 AS t1").
 			Set("a = $1", 1).
 			Set("b = $1", "bbb").
