@@ -14,13 +14,13 @@ type updater struct {
 	with      withs
 	table     string
 	from      []string
-	set       conds
-	where     conds
+	set       exprs
+	where     exprs
 	returning []string
 }
 
-func (b *updater) With(name string, query Builder) Updater {
-	b.with = append(b.with, &with{name, query})
+func (b *updater) With(name string, q Builder) Updater {
+	b.with = append(b.with, &with{name, q})
 	return b
 }
 
@@ -29,20 +29,20 @@ func (b *updater) From(from string) Updater {
 	return b
 }
 
-func (b *updater) Set(expr string, params ...interface{}) Updater {
-	b.set = append(b.set, &cond{expr, params})
+func (b *updater) Set(set string, params ...interface{}) Updater {
+	b.set = append(b.set, &expr{set, params})
 	return b
 }
 
-func (b *updater) SetExcluded(cols ...string) Updater {
-	for _, col := range cols {
-		b.set = append(b.set, &cond{fmt.Sprintf("%s = EXCLUDED.%s", col, col), nil})
+func (b *updater) SetExcluded(col ...string) Updater {
+	for _, c := range col {
+		b.set = append(b.set, &expr{fmt.Sprintf("%s = EXCLUDED.%s", c, c), nil})
 	}
 	return b
 }
 
-func (b *updater) Where(expr string, params ...interface{}) Updater {
-	b.where = append(b.where, &cond{expr, params})
+func (b *updater) Where(where string, params ...interface{}) Updater {
+	b.where = append(b.where, &expr{where, params})
 	return b
 }
 
@@ -66,7 +66,7 @@ func (b *updater) Build() (string, []interface{}, error) {
 			return "", nil, errors.New("returning not supported for update part of upsert")
 		}
 	} else {
-		if isEmpty(b.table) {
+		if isBlank(b.table) {
 			return "", nil, errors.New("empty table")
 		}
 	}
@@ -85,13 +85,9 @@ func (b *updater) Build() (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-
 		buf.WriteString(sql)
 		buf.WriteRune(' ')
-
-		if len(pps) > 0 {
-			params = append(params, pps...)
-		}
+		params = append(params, pps...)
 	}
 
 	// update
@@ -112,20 +108,19 @@ func (b *updater) Build() (string, []interface{}, error) {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-
 			params = append(params, x.params...)
-			buf.WriteString(x.expr)
+			buf.WriteString(x.text)
 		}
 	}
 
 	// from
 	if len(b.from) > 0 {
 		buf.WriteString(" FROM ")
-		for i, x := range b.from {
+		for i, s := range b.from {
 			if i > 0 {
 				buf.WriteRune(' ')
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 
@@ -142,7 +137,7 @@ func (b *updater) Build() (string, []interface{}, error) {
 				buf.WriteString(") AND (")
 			}
 			params = append(params, x.params...)
-			buf.WriteString(x.expr)
+			buf.WriteString(x.text)
 		}
 		buf.WriteRune(')')
 	}
@@ -150,11 +145,11 @@ func (b *updater) Build() (string, []interface{}, error) {
 	// returning
 	if len(b.returning) > 0 {
 		buf.WriteString(" RETURNING ")
-		for i, x := range b.returning {
+		for i, s := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 

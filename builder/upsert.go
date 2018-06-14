@@ -13,18 +13,18 @@ type upserter struct {
 	columns          []string
 	values           [][]interface{}
 	from             Selecter
-	onConflictTarget *cond
-	onConflictUpdate *cond
+	onConflictTarget *expr
+	onConflictUpdate *expr
 	returning        []string
 }
 
-func (b *upserter) With(name string, query Builder) Upserter {
-	b.with = append(b.with, &with{name, query})
+func (b *upserter) With(name string, q Builder) Upserter {
+	b.with = append(b.with, &with{name, q})
 	return b
 }
 
-func (b *upserter) Columns(columns ...string) Upserter {
-	b.columns = append(b.columns, columns...)
+func (b *upserter) Columns(col ...string) Upserter {
+	b.columns = append(b.columns, col...)
 	return b
 }
 
@@ -33,13 +33,13 @@ func (b *upserter) Values(values ...interface{}) Upserter {
 	return b
 }
 
-func (b *upserter) From(query Selecter) Upserter {
-	b.from = query
+func (b *upserter) From(q Selecter) Upserter {
+	b.from = q
 	return b
 }
 
 func (b *upserter) Update(update string, params ...interface{}) Upserter {
-	b.onConflictUpdate = &cond{update, params}
+	b.onConflictUpdate = &expr{update, params}
 	return b
 }
 
@@ -63,7 +63,7 @@ func (b *upserter) Build() (string, []interface{}, error) {
 	}
 
 	if b.onConflictTarget != nil {
-		if isEmpty(b.onConflictTarget.expr) {
+		if isBlank(b.onConflictTarget.text) {
 			return "", nil, errors.New("empty ON CONFLICT target")
 		}
 	}
@@ -73,7 +73,7 @@ func (b *upserter) Build() (string, []interface{}, error) {
 			return "", nil, errors.New("empty ON CONFLICT target")
 		}
 
-		if isEmpty(b.onConflictUpdate.expr) {
+		if isBlank(b.onConflictUpdate.text) {
 			return "", nil, errors.New("empty ON CONFLICT update statement")
 		}
 	}
@@ -94,13 +94,9 @@ func (b *upserter) Build() (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-
 		buf.WriteString(sql)
 		buf.WriteRune(' ')
-
-		if len(pps) > 0 {
-			params = append(params, pps...)
-		}
+		params = append(params, pps...)
 	}
 
 	// insert
@@ -113,11 +109,11 @@ func (b *upserter) Build() (string, []interface{}, error) {
 	// columns
 	if len(b.columns) > 0 {
 		buf.WriteString(" (")
-		for i, x := range b.columns {
+		for i, s := range b.columns {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 		buf.WriteRune(')')
 	}
@@ -135,7 +131,6 @@ func (b *upserter) Build() (string, []interface{}, error) {
 					buf.WriteString(", ")
 				}
 				if _, ok := v.(DefaultValue); ok {
-					fmt.Printf("== DEFAULT ==> %#v\n", v)
 					buf.WriteString("DEFAULT")
 				} else {
 					params = append(params, v)
@@ -150,6 +145,7 @@ func (b *upserter) Build() (string, []interface{}, error) {
 
 	if b.from != nil {
 		buf.WriteRune(' ')
+
 		// prepare query
 		sql, pps, err := b.from.Build()
 		if err != nil {
@@ -157,16 +153,13 @@ func (b *upserter) Build() (string, []interface{}, error) {
 		}
 
 		// validate and rename params
-		c := &cond{sql, pps}
-		if _, err := c.build(len(params) + 1); err != nil {
+		x := &expr{sql, pps}
+		if _, err := x.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
-		buf.WriteString(c.expr)
-
-		if len(c.params) > 0 {
-			params = append(params, c.params...)
-		}
+		buf.WriteString(x.text)
+		params = append(params, x.params...)
 	}
 
 	// on conflict: do nothing
@@ -177,7 +170,7 @@ func (b *upserter) Build() (string, []interface{}, error) {
 		if _, err := b.onConflictTarget.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
-		buf.WriteString(b.onConflictTarget.expr)
+		buf.WriteString(b.onConflictTarget.text)
 		params = append(params, b.onConflictTarget.params...)
 
 		buf.WriteString(" DO UPDATE SET ")
@@ -189,16 +182,16 @@ func (b *upserter) Build() (string, []interface{}, error) {
 				return "", nil, err
 			}
 
-			buf.WriteString(b.onConflictUpdate.expr)
+			buf.WriteString(b.onConflictUpdate.text)
 			params = append(params, b.onConflictUpdate.params...)
 		} else {
 			// otherwise generate EXCLUDED for columns
-			for i, col := range b.columns {
+			for i, s := range b.columns {
 				if i > 0 {
 					buf.WriteString(", ")
 				}
 
-				buf.WriteString(fmt.Sprintf("%s = EXCLUDED.%s", col, col))
+				buf.WriteString(fmt.Sprintf("%s = EXCLUDED.%s", s, s))
 			}
 		}
 	}
@@ -206,11 +199,11 @@ func (b *upserter) Build() (string, []interface{}, error) {
 	// returning
 	if len(b.returning) > 0 {
 		buf.WriteString(" RETURNING ")
-		for i, x := range b.returning {
+		for i, s := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 	return buf.String(), params, nil

@@ -11,19 +11,19 @@ import (
 	"github.com/jmoiron/sqlx/reflectx"
 )
 
-type cond struct {
-	expr   string
+type expr struct {
+	text   string
 	params []interface{}
 }
 
-type conds []*cond
+type exprs []*expr
 
-func (c *cond) build(startIdx int) (int, error) {
+func (x *expr) build(startIdx int) (int, error) {
 	var buf bytes.Buffer
 	var paramIdx int
 	var newParams []interface{}
 
-	rr := []rune(c.expr)
+	rr := []rune(x.text)
 
 	for idx := 0; idx < len(rr); {
 		switch rr[idx] {
@@ -61,7 +61,7 @@ func (c *cond) build(startIdx int) (int, error) {
 		case '$':
 			idx++
 			var b bytes.Buffer
-			for i := idx; i < len(rr) && c.expr[i] >= '0' && c.expr[i] <= '9'; i++ {
+			for i := idx; i < len(rr) && rr[i] >= '0' && rr[i] <= '9'; i++ {
 				b.WriteRune(rr[i])
 				idx++
 			}
@@ -72,11 +72,11 @@ func (c *cond) build(startIdx int) (int, error) {
 			if err != nil {
 				return 0, err
 			}
-			if pi < 1 || pi > len(c.params) {
+			if pi < 1 || pi > len(x.params) {
 				return 0, fmt.Errorf("invalid placeholder index: %d", pi)
 			}
 			pi -= 1 // placeholder index is one-based
-			m := getSliceMeta(c.params[pi])
+			m := getSliceMeta(x.params[pi])
 			if m != nil {
 				// current placeholder is a slice, expand it
 				if m.length == 0 {
@@ -94,7 +94,7 @@ func (c *cond) build(startIdx int) (int, error) {
 				// current placeholder is not a slice, just renumber it
 				buf.WriteRune('$')
 				buf.WriteString(strconv.Itoa(startIdx + paramIdx))
-				newParams = append(newParams, c.params[pi])
+				newParams = append(newParams, x.params[pi])
 			}
 			paramIdx++
 		default:
@@ -103,9 +103,9 @@ func (c *cond) build(startIdx int) (int, error) {
 		}
 	}
 
-	c.expr = buf.String()
-	c.params = newParams
-	return startIdx + len(c.params), nil
+	x.text = buf.String()
+	x.params = newParams
+	return startIdx + len(x.params), nil
 }
 
 type sliceMeta struct {
@@ -124,15 +124,15 @@ func getSliceMeta(p interface{}) *sliceMeta {
 	return nil
 }
 
-func (cc conds) build(startIdx int) error {
-	if startIdx < 0 {
-		return errors.New("negative start index")
+func (xx exprs) build(startIdx int) error {
+	if startIdx < 1 {
+		return errors.New("start index should be >= 1")
 	}
-	for _, c := range cc {
-		if isEmpty(c.expr) {
+	for _, x := range xx {
+		if isBlank(x.text) {
 			return errors.New("empty expression")
 		}
-		newIdx, err := c.build(startIdx)
+		newIdx, err := x.build(startIdx)
 		if err != nil {
 			return err
 		}
@@ -141,6 +141,6 @@ func (cc conds) build(startIdx int) error {
 	return nil
 }
 
-func isEmpty(v string) bool {
-	return strings.Trim(v, " ") == ""
+func isBlank(s string) bool {
+	return strings.TrimSpace(s) == ""
 }

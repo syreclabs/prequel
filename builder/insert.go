@@ -14,17 +14,17 @@ type inserter struct {
 	values              [][]interface{}
 	from                Selecter
 	onConflictDoNothing bool
-	onConflictTarget    *cond
+	onConflictTarget    *expr
 	returning           []string
 }
 
-func (b *inserter) With(name string, query Builder) Inserter {
-	b.with = append(b.with, &with{name, query})
+func (b *inserter) With(name string, q Builder) Inserter {
+	b.with = append(b.with, &with{name, q})
 	return b
 }
 
-func (b *inserter) Columns(columns ...string) Inserter {
-	b.columns = append(b.columns, columns...)
+func (b *inserter) Columns(col ...string) Inserter {
+	b.columns = append(b.columns, col...)
 	return b
 }
 
@@ -33,15 +33,15 @@ func (b *inserter) Values(values ...interface{}) Inserter {
 	return b
 }
 
-func (b *inserter) From(query Selecter) Inserter {
-	b.from = query
+func (b *inserter) From(q Selecter) Inserter {
+	b.from = q
 	return b
 }
 
 func (b *inserter) OnConflictDoNothing(target string, params ...interface{}) Inserter {
 	b.onConflictDoNothing = true
 	if target != "" {
-		b.onConflictTarget = &cond{target, params}
+		b.onConflictTarget = &expr{target, params}
 	}
 	return b
 }
@@ -75,13 +75,9 @@ func (b *inserter) Build() (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-
 		buf.WriteString(sql)
 		buf.WriteRune(' ')
-
-		if len(pps) > 0 {
-			params = append(params, pps...)
-		}
+		params = append(params, pps...)
 	}
 
 	// insert
@@ -94,11 +90,11 @@ func (b *inserter) Build() (string, []interface{}, error) {
 	// columns
 	if len(b.columns) > 0 {
 		buf.WriteString(" (")
-		for i, x := range b.columns {
+		for i, s := range b.columns {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 		buf.WriteRune(')')
 	}
@@ -130,6 +126,7 @@ func (b *inserter) Build() (string, []interface{}, error) {
 
 	if b.from != nil {
 		buf.WriteRune(' ')
+
 		// prepare query
 		sql, pps, err := b.from.Build()
 		if err != nil {
@@ -137,16 +134,13 @@ func (b *inserter) Build() (string, []interface{}, error) {
 		}
 
 		// validate and rename params
-		c := &cond{sql, pps}
-		if _, err := c.build(len(params) + 1); err != nil {
+		x := &expr{sql, pps}
+		if _, err := x.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
-		buf.WriteString(c.expr)
-
-		if len(c.params) > 0 {
-			params = append(params, c.params...)
-		}
+		buf.WriteString(x.text)
+		params = append(params, x.params...)
 	}
 
 	// on conflict: do nothing
@@ -158,7 +152,7 @@ func (b *inserter) Build() (string, []interface{}, error) {
 			if _, err := b.onConflictTarget.build(len(params) + 1); err != nil {
 				return "", nil, err
 			}
-			buf.WriteString(b.onConflictTarget.expr)
+			buf.WriteString(b.onConflictTarget.text)
 			buf.WriteRune(' ')
 
 			params = append(params, b.onConflictTarget.params...)
@@ -170,11 +164,11 @@ func (b *inserter) Build() (string, []interface{}, error) {
 	// returning
 	if len(b.returning) > 0 {
 		buf.WriteString(" RETURNING ")
-		for i, x := range b.returning {
+		for i, s := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 	return buf.String(), params, nil

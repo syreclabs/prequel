@@ -9,12 +9,12 @@ type deleter struct {
 	with      withs
 	from      string
 	using     []string
-	where     conds
+	where     exprs
 	returning []string
 }
 
-func (b *deleter) With(name string, query Builder) Deleter {
-	b.with = append(b.with, &with{name, query})
+func (b *deleter) With(name string, q Builder) Deleter {
+	b.with = append(b.with, &with{name, q})
 	return b
 }
 
@@ -23,8 +23,8 @@ func (b *deleter) Using(using string) Deleter {
 	return b
 }
 
-func (b *deleter) Where(expr string, params ...interface{}) Deleter {
-	b.where = append(b.where, &cond{expr, params})
+func (b *deleter) Where(where string, params ...interface{}) Deleter {
+	b.where = append(b.where, &expr{where, params})
 	return b
 }
 
@@ -35,7 +35,7 @@ func (b *deleter) Returning(returning ...string) Deleter {
 
 func (b *deleter) Build() (string, []interface{}, error) {
 	// verify
-	if isEmpty(b.from) {
+	if isBlank(b.from) {
 		return "", nil, errors.New("empty from")
 	}
 
@@ -49,13 +49,9 @@ func (b *deleter) Build() (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-
 		buf.WriteString(sql)
 		buf.WriteRune(' ')
-
-		if len(pps) > 0 {
-			params = append(params, pps...)
-		}
+		params = append(params, pps...)
 	}
 
 	// delete
@@ -67,14 +63,14 @@ func (b *deleter) Build() (string, []interface{}, error) {
 	// using
 	if len(b.using) > 0 {
 		buf.WriteString(" USING ")
-		for i, x := range b.using {
-			if isEmpty(x) {
+		for i, s := range b.using {
+			if isBlank(s) {
 				return "", nil, errors.New("empty using")
 			}
 			if i > 0 {
 				buf.WriteRune(' ')
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 
@@ -91,7 +87,7 @@ func (b *deleter) Build() (string, []interface{}, error) {
 				buf.WriteString(") AND (")
 			}
 			params = append(params, x.params...)
-			buf.WriteString(x.expr)
+			buf.WriteString(x.text)
 		}
 		buf.WriteRune(')')
 	}
@@ -99,11 +95,11 @@ func (b *deleter) Build() (string, []interface{}, error) {
 	// returning
 	if len(b.returning) > 0 {
 		buf.WriteString(" RETURNING ")
-		for i, x := range b.returning {
+		for i, s := range b.returning {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 

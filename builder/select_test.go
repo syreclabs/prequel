@@ -16,7 +16,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithOrderBy", func(t *testing.T) {
@@ -31,7 +33,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithLimit", func(t *testing.T) {
@@ -45,7 +49,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithOffset", func(t *testing.T) {
@@ -59,7 +65,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithConditions", func(t *testing.T) {
@@ -74,7 +82,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithDistinct", func(t *testing.T) {
@@ -88,7 +98,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithJoins", func(t *testing.T) {
@@ -103,7 +115,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithGroupBy", func(t *testing.T) {
@@ -117,7 +131,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithHaving", func(t *testing.T) {
@@ -134,7 +150,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 2)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 2); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
@@ -152,7 +170,9 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 2)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 2); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithUnions", func(t *testing.T) {
@@ -168,6 +188,8 @@ func TestSelect(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 0)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 0); err != nil {
+			t.Error(err)
+		}
 	})
 }

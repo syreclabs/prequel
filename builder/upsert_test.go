@@ -17,7 +17,9 @@ func TestUpsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithDefaultFirstParam", func(t *testing.T) {
@@ -31,7 +33,9 @@ func TestUpsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 2)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 2); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithDefaultMidParam", func(t *testing.T) {
@@ -47,7 +51,9 @@ func TestUpsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 8)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 8); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithReturning", func(t *testing.T) {
@@ -63,7 +69,9 @@ func TestUpsert(t *testing.T) {
 				t.Fatalf("expected err to be nil, got %v", err)
 			}
 
-			validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+			if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+				t.Error(err)
+			}
 		})
 
 		t.Run("Columns", func(t *testing.T) {
@@ -78,7 +86,9 @@ func TestUpsert(t *testing.T) {
 				t.Fatalf("expected err to be nil, got %v", err)
 			}
 
-			validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+			if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+				t.Error(err)
+			}
 		})
 	})
 
@@ -95,7 +105,9 @@ func TestUpsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 10)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 10); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
@@ -114,6 +126,8 @@ func TestUpsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 2)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 2); err != nil {
+			t.Error(err)
+		}
 	})
 }

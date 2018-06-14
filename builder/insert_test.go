@@ -17,7 +17,9 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithoutColumns", func(t *testing.T) {
@@ -30,7 +32,9 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithReturning", func(t *testing.T) {
@@ -45,7 +49,9 @@ func TestInsert(t *testing.T) {
 				t.Fatalf("expected err to be nil, got %v", err)
 			}
 
-			validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+			if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+				t.Error(err)
+			}
 		})
 
 		t.Run("Columns", func(t *testing.T) {
@@ -59,7 +65,9 @@ func TestInsert(t *testing.T) {
 				t.Fatalf("expected err to be nil, got %v", err)
 			}
 
-			validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+			if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+				t.Error(err)
+			}
 		})
 	})
 
@@ -75,7 +83,9 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 9)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 9); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
@@ -93,7 +103,9 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("expected err to be nil, got %v", err)
 		}
 
-		validateGeneratedSql(t, sql, expectedSql, len(params), 1)
+		if err := validateBuilderResult(sql, expectedSql, len(params), 1); err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("OnConflict", func(t *testing.T) {
@@ -109,7 +121,9 @@ func TestInsert(t *testing.T) {
 					t.Fatalf("expected err to be nil, got %v", err)
 				}
 
-				validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+				if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+					t.Error(err)
+				}
 			})
 
 			t.Run("WithTagret", func(t *testing.T) {
@@ -123,7 +137,9 @@ func TestInsert(t *testing.T) {
 					t.Fatalf("expected err to be nil, got %v", err)
 				}
 
-				validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+				if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+					t.Error(err)
+				}
 			})
 
 			t.Run("WithConstraint", func(t *testing.T) {
@@ -137,7 +153,9 @@ func TestInsert(t *testing.T) {
 					t.Fatalf("expected err to be nil, got %v", err)
 				}
 
-				validateGeneratedSql(t, sql, expectedSql, len(params), 3)
+				if err := validateBuilderResult(sql, expectedSql, len(params), 3); err != nil {
+					t.Error(err)
+				}
 			})
 
 			t.Run("WithWhere", func(t *testing.T) {
@@ -151,7 +169,9 @@ func TestInsert(t *testing.T) {
 					t.Fatalf("expected err to be nil, got %v", err)
 				}
 
-				validateGeneratedSql(t, sql, expectedSql, len(params), 5)
+				if err := validateBuilderResult(sql, expectedSql, len(params), 5); err != nil {
+					t.Error(err)
+				}
 			})
 		})
 	})

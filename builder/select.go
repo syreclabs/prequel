@@ -15,25 +15,25 @@ type unions []*union
 type selecter struct {
 	with     withs
 	distinct []string
-	expr     conds
+	columns  exprs
 	from     []string
-	where    conds
-	groupby  []string
-	having   conds
+	where    exprs
+	groupBy  []string
+	having   exprs
 	union    unions
-	orderby  []string
+	orderBy  []string
 	offset   uint64
 	limit    uint64
 	locking  string
 }
 
-func (b *selecter) With(name string, query Builder) Selecter {
-	b.with = append(b.with, &with{name, query})
+func (b *selecter) With(name string, q Builder) Selecter {
+	b.with = append(b.with, &with{name, q})
 	return b
 }
 
-func (b *selecter) Columns(expr string, params ...interface{}) Selecter {
-	b.expr = append(b.expr, &cond{expr, params})
+func (b *selecter) Columns(col string, params ...interface{}) Selecter {
+	b.columns = append(b.columns, &expr{col, params})
 	return b
 }
 
@@ -42,36 +42,36 @@ func (b *selecter) From(from string) Selecter {
 	return b
 }
 
-func (b *selecter) Where(expr string, params ...interface{}) Selecter {
-	b.where = append(b.where, &cond{expr, params})
+func (b *selecter) Where(where string, params ...interface{}) Selecter {
+	b.where = append(b.where, &expr{where, params})
 	return b
 }
 
-func (b *selecter) Distinct(expr ...string) Selecter {
+func (b *selecter) Distinct(distinct ...string) Selecter {
 	if b.distinct == nil {
 		b.distinct = []string{}
 	}
-	b.distinct = append(b.distinct, expr...)
+	b.distinct = append(b.distinct, distinct...)
 	return b
 }
 
-func (b *selecter) GroupBy(expr string) Selecter {
-	b.groupby = append(b.groupby, expr)
+func (b *selecter) GroupBy(groupBy string) Selecter {
+	b.groupBy = append(b.groupBy, groupBy)
 	return b
 }
 
-func (b *selecter) Having(expr string, params ...interface{}) Selecter {
-	b.having = append(b.having, &cond{expr, params})
+func (b *selecter) Having(having string, params ...interface{}) Selecter {
+	b.having = append(b.having, &expr{having, params})
 	return b
 }
 
-func (b *selecter) Union(all bool, query Selecter) Selecter {
-	b.union = append(b.union, &union{all, query})
+func (b *selecter) Union(all bool, q Selecter) Selecter {
+	b.union = append(b.union, &union{all, q})
 	return b
 }
 
-func (b *selecter) OrderBy(expr string) Selecter {
-	b.orderby = append(b.orderby, expr)
+func (b *selecter) OrderBy(orderBy string) Selecter {
+	b.orderBy = append(b.orderBy, orderBy)
 	return b
 }
 
@@ -101,13 +101,9 @@ func (b *selecter) Build() (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-
 		buf.WriteString(sql)
 		buf.WriteRune(' ')
-
-		if len(pps) > 0 {
-			params = append(params, pps...)
-		}
+		params = append(params, pps...)
 	}
 
 	// select
@@ -119,39 +115,39 @@ func (b *selecter) Build() (string, []interface{}, error) {
 	}
 	if len(b.distinct) > 0 {
 		buf.WriteString(" ON (")
-		for i, x := range b.distinct {
+		for i, s := range b.distinct {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 		buf.WriteRune(')')
 	}
 
-	// select expr
-	if len(b.expr) > 0 {
+	// select columns
+	if len(b.columns) > 0 {
 		buf.WriteRune(' ')
 		// validate and rename SELECT expressions
-		if err := b.expr.build(len(params) + 1); err != nil {
+		if err := b.columns.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
-		for i, x := range b.expr {
+		for i, x := range b.columns {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
 			params = append(params, x.params...)
-			buf.WriteString(x.expr)
+			buf.WriteString(x.text)
 		}
 	}
 
 	// from
 	if len(b.from) > 0 {
 		buf.WriteString(" FROM ")
-		for i, x := range b.from {
+		for i, s := range b.from {
 			if i > 0 {
 				buf.WriteRune(' ')
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 
@@ -168,19 +164,19 @@ func (b *selecter) Build() (string, []interface{}, error) {
 				buf.WriteString(") AND (")
 			}
 			params = append(params, x.params...)
-			buf.WriteString(x.expr)
+			buf.WriteString(x.text)
 		}
 		buf.WriteRune(')')
 	}
 
 	// group by
-	if len(b.groupby) > 0 {
+	if len(b.groupBy) > 0 {
 		buf.WriteString(" GROUP BY ")
-		for i, x := range b.groupby {
+		for i, s := range b.groupBy {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 
@@ -197,7 +193,7 @@ func (b *selecter) Build() (string, []interface{}, error) {
 				buf.WriteString(" AND ")
 			}
 			params = append(params, x.params...)
-			buf.WriteString(x.expr)
+			buf.WriteString(x.text)
 		}
 	}
 
@@ -215,25 +211,23 @@ func (b *selecter) Build() (string, []interface{}, error) {
 		}
 
 		// validate and rename params
-		c := &cond{sql, pps}
-		if _, err := c.build(len(params) + 1); err != nil {
+		x := &expr{sql, pps}
+		if _, err := x.build(len(params) + 1); err != nil {
 			return "", nil, err
 		}
 
-		buf.WriteString(c.expr)
-		if len(c.params) > 0 {
-			params = append(params, c.params...)
-		}
+		buf.WriteString(x.text)
+		params = append(params, x.params...)
 	}
 
 	// order by
-	if len(b.orderby) > 0 {
+	if len(b.orderBy) > 0 {
 		buf.WriteString(" ORDER BY ")
-		for i, x := range b.orderby {
+		for i, s := range b.orderBy {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(x)
+			buf.WriteString(s)
 		}
 	}
 
