@@ -116,6 +116,26 @@ func TestUpdate(t *testing.T) {
 		}
 	})
 
+	t.Run("WithParamsInFrom", func(t *testing.T) {
+		expectedSql := "UPDATE table1 AS t1 SET a = t2.a, b = $1, c = t3.a FROM table2 AS t2 INNER JOIN table3 AS t3 ON t3.id = t2.id AND t3.name = $2 RETURNING *"
+		b := Update("table1 AS t1").
+			Set("a = t2.a").
+			Set("b = $1", 2).
+			Set("c = t3.a").
+			From("table2 AS t2").
+			From("INNER JOIN table3 AS t3 ON t3.id = t2.id AND t3.name = $1", "test").
+			Returning("*")
+
+		sql, params, err := b.Build()
+		if err != nil {
+			t.Fatalf("expected err to be nil, got %v", err)
+		}
+
+		if err := validateBuilderResult(sql, expectedSql, len(params), 2); err != nil {
+			t.Error(err)
+		}
+	})
+
 	t.Run("Complex", func(t *testing.T) {
 		expectedSql := "UPDATE table1 AS t1 SET a = $1, b = $2, c = $3, d = t2.name FROM table2 AS t2 WHERE (t1.id = t2.table1_id AND t1.name = $4 AND t2.name != $5) RETURNING t1.id, t1.name"
 		b := Update("table1 AS t1").

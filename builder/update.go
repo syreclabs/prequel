@@ -13,7 +13,7 @@ type updater struct {
 	upsert    bool // tells builder if sql should be built for update or for upsert
 	with      withs
 	table     string
-	from      []string
+	from      exprs
 	set       exprs
 	where     exprs
 	returning []string
@@ -24,8 +24,8 @@ func (b *updater) With(name string, q Builder) Updater {
 	return b
 }
 
-func (b *updater) From(from string) Updater {
-	b.from = append(b.from, from)
+func (b *updater) From(from string, params ...interface{}) Updater {
+	b.from = append(b.from, &expr{from, params})
 	return b
 }
 
@@ -115,12 +115,18 @@ func (b *updater) Build() (string, []interface{}, error) {
 
 	// from
 	if len(b.from) > 0 {
+		// validate and rename from conditions
+		if err := b.from.build(len(params) + 1); err != nil {
+			return "", nil, err
+		}
+
 		buf.WriteString(" FROM ")
-		for i, s := range b.from {
+		for i, x := range b.from {
 			if i > 0 {
 				buf.WriteRune(' ')
 			}
-			buf.WriteString(s)
+			params = append(params, x.params...)
+			buf.WriteString(x.text)
 		}
 	}
 

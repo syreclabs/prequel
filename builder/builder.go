@@ -16,7 +16,7 @@ type Selecter interface {
 	Builder
 	With(name string, q Builder) Selecter
 	Columns(col string, params ...interface{}) Selecter
-	From(from string) Selecter
+	From(from string, params ...interface{}) Selecter
 	Where(where string, params ...interface{}) Selecter
 	Union(all bool, q Selecter) Selecter
 	Offset(offset uint64) Selecter
@@ -32,7 +32,7 @@ type Selecter interface {
 type Updater interface {
 	Builder
 	With(name string, q Builder) Updater
-	From(from string) Updater
+	From(from string, params ...interface{}) Updater
 	Set(set string, params ...interface{}) Updater
 	Where(where string, params ...interface{}) Updater
 	Returning(returning ...string) Updater

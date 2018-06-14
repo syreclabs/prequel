@@ -16,7 +16,7 @@ type selecter struct {
 	with     withs
 	distinct []string
 	columns  exprs
-	from     []string
+	from     exprs
 	where    exprs
 	groupBy  []string
 	having   exprs
@@ -37,8 +37,8 @@ func (b *selecter) Columns(col string, params ...interface{}) Selecter {
 	return b
 }
 
-func (b *selecter) From(from string) Selecter {
-	b.from = append(b.from, from)
+func (b *selecter) From(from string, params ...interface{}) Selecter {
+	b.from = append(b.from, &expr{from, params})
 	return b
 }
 
@@ -142,12 +142,18 @@ func (b *selecter) Build() (string, []interface{}, error) {
 
 	// from
 	if len(b.from) > 0 {
+		// validate and rename from conditions
+		if err := b.from.build(len(params) + 1); err != nil {
+			return "", nil, err
+		}
+
 		buf.WriteString(" FROM ")
-		for i, s := range b.from {
+		for i, x := range b.from {
 			if i > 0 {
 				buf.WriteRune(' ')
 			}
-			buf.WriteString(s)
+			params = append(params, x.params...)
+			buf.WriteString(x.text)
 		}
 	}
 

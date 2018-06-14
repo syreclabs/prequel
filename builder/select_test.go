@@ -21,6 +21,22 @@ func TestSelect(t *testing.T) {
 		}
 	})
 
+	t.Run("WithParamsInFrom", func(t *testing.T) {
+		expectedSql := "SELECT * FROM table1 INNER JOIN table2 ON table2.id = table1.id AND table2.name = $1"
+		b := Select("*").
+			From("table1").
+			From("INNER JOIN table2 ON table2.id = table1.id AND table2.name = $1", "test")
+
+		sql, params, err := b.Build()
+		if err != nil {
+			t.Fatalf("expected err to be nil, got %v", err)
+		}
+
+		if err := validateBuilderResult(sql, expectedSql, len(params), 1); err != nil {
+			t.Error(err)
+		}
+	})
+
 	t.Run("WithOrderBy", func(t *testing.T) {
 		expectedSql := "SELECT * FROM table1 ORDER BY b asc, a desc"
 		b := Select("*").
