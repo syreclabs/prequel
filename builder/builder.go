@@ -105,7 +105,7 @@ func (dv DefaultValue) String() string {
 
 func Default(value interface{}) interface{} {
 	val := reflect.ValueOf(value)
-	switch v := value.(type) {
+	switch value.(type) {
 	case int, int8, int16, int32, int64:
 		if val.Int() == 0 {
 			return DefaultValue{}
@@ -119,17 +119,20 @@ func Default(value interface{}) interface{} {
 			return DefaultValue{}
 		}
 	case string:
-		if v == "" {
+		if val.String() == "" {
 			return DefaultValue{}
 		}
 	default:
-		switch reflect.TypeOf(v).Kind() {
+		if !val.IsValid() {
+			return DefaultValue{}
+		}
+		switch reflect.TypeOf(value).Kind() {
 		case reflect.Ptr:
-			if reflect.ValueOf(v).IsNil() {
+			if val.IsNil() {
 				return DefaultValue{}
 			}
 		case reflect.Slice, reflect.Map:
-			if reflect.ValueOf(v).Len() == 0 {
+			if val.Len() == 0 {
 				return DefaultValue{}
 			}
 		}

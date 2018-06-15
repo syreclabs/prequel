@@ -22,19 +22,19 @@ func init() {
 	const dsnEnv = "PREQUEL_TEST_DSN"
 
 	dsn := os.Getenv(dsnEnv)
-	doTest = dsn != "" && dsn != "skip"
+	doTest = dsn != ""
 
 	if !doTest {
 		fmt.Printf("%s is not set, some tests will be skipped\n", dsnEnv)
 		return
 	}
 
-	sqlxdb, err := sqlx.Connect("postgres", dsn)
+	var err error
+	db, err = Connect(context.Background(), "postgres", dsn)
 	if err != nil {
-		fmt.Printf("sqlx.Connect: %#v\n", err)
+		fmt.Printf("Connect: %v\n", err)
 		doTest = false
 	}
-	db = &DB{sqlxdb}
 }
 
 var schema = struct {
