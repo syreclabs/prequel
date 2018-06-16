@@ -96,6 +96,12 @@ func loadFixtures(ctx context.Context) {
 	tx.Commit()
 }
 
+var _ Runner = (*DB)(nil)
+var _ Runner = (*Conn)(nil)
+var _ Runner = (*Tx)(nil)
+
+// var _ Runner = (*Stmt)(nil)
+
 func TestSelectAll(t *testing.T) {
 	withSchema(context.Background(), func(ctx context.Context) {
 		loadFixtures(ctx)

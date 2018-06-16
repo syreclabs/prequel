@@ -1,4 +1,4 @@
-PostgreSQL query bulder and executor (using [jmoiron/sqlx](https://github.com/jmoiron/sqlx)).
+PostgreSQL query bulder and executor.
 
 **Pre-alpha WIP**
 
@@ -8,7 +8,7 @@ PostgreSQL query bulder and executor (using [jmoiron/sqlx](https://github.com/jm
 ### Requirements:
 
 - Go >= 1.9
-- PostgreSQL >= 9.6
+- PostgreSQL >= 9.5
 
 ### Installation
 

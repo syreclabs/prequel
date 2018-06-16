@@ -13,13 +13,17 @@ import (
 // Queryer is an interface used by Select and Get
 type Queryer interface {
 	Select(ctx context.Context, b builder.Builder, dest interface{}) error
+	SelectRaw(ctx context.Context, dest interface{}, q string, params ...interface{}) error
 	Get(ctx context.Context, b builder.Builder, dest interface{}) error
+	GetRaw(ctx context.Context, dest interface{}, q string, params ...interface{}) error
 }
 
 // Execer is an interface used by Exec and MustExec.
 type Execer interface {
 	Exec(ctx context.Context, b builder.Builder) (sql.Result, error)
+	ExecRaw(ctx context.Context, query string, params ...interface{}) (sql.Result, error)
 	MustExec(ctx context.Context, b builder.Builder) sql.Result
+	MustExecRaw(ctx context.Context, query string, params ...interface{}) sql.Result
 }
 
 // Runner is an interface used by both Queryer and Execer.
@@ -95,9 +99,17 @@ func (db *DB) Select(ctx context.Context, b builder.Builder, dest interface{}) e
 	return doSelect(ctx, db.DB, b, dest)
 }
 
+func (db *DB) SelectRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
+	return doSelectRaw(ctx, db.DB, dest, sql, params...)
+}
+
 // Get using this DB.
 func (db *DB) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
 	return doGet(ctx, db.DB, b, dest)
+}
+
+func (db *DB) GetRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
+	return doGetRaw(ctx, db.DB, dest, sql, params...)
 }
 
 // Exec using this DB.
@@ -105,9 +117,17 @@ func (db *DB) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
 	return doExec(ctx, db.DB, b)
 }
 
+func (db *DB) ExecRaw(ctx context.Context, sql string, params ...interface{}) (sql.Result, error) {
+	return doExecRaw(ctx, db.DB, sql, params...)
+}
+
 // MustExec using this DB. This method will panic on error.
 func (db *DB) MustExec(ctx context.Context, b builder.Builder) sql.Result {
 	return doMustExec(ctx, db.DB, b)
+}
+
+func (db *DB) MustExecRaw(ctx context.Context, sql string, params ...interface{}) sql.Result {
+	return doMustExecRaw(ctx, db.DB, sql, params...)
 }
 
 // Begin starts a new transaction using this DB.
@@ -180,9 +200,17 @@ func (tx *Tx) Select(ctx context.Context, b builder.Builder, dest interface{}) e
 	return doSelect(ctx, tx.Tx, b, dest)
 }
 
+func (tx *Tx) SelectRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
+	return doSelectRaw(ctx, tx.Tx, dest, sql, params...)
+}
+
 // Get using this transaction.
 func (tx *Tx) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
 	return doGet(ctx, tx.Tx, b, dest)
+}
+
+func (tx *Tx) GetRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
+	return doGetRaw(ctx, tx.Tx, dest, sql, params...)
 }
 
 // Exec using this transaction.
@@ -190,9 +218,17 @@ func (tx *Tx) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
 	return doExec(ctx, tx.Tx, b)
 }
 
+func (tx *Tx) ExecRaw(ctx context.Context, sql string, params ...interface{}) (sql.Result, error) {
+	return doExecRaw(ctx, tx.Tx, sql, params)
+}
+
 // Must Exec using this transaction and panic on error.
 func (tx *Tx) MustExec(ctx context.Context, b builder.Builder) sql.Result {
 	return doMustExec(ctx, tx.Tx, b)
+}
+
+func (tx *Tx) MustExecRaw(ctx context.Context, sql string, params ...interface{}) sql.Result {
+	return doMustExecRaw(ctx, tx.Tx, sql, params...)
 }
 
 // Commit this transaction.
@@ -220,9 +256,17 @@ func (conn *Conn) Select(ctx context.Context, b builder.Builder, dest interface{
 	return doSelect(ctx, conn.Conn, b, dest)
 }
 
+func (conn *Conn) SelectRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
+	return doSelectRaw(ctx, conn.Conn, dest, sql, params)
+}
+
 // Get using this connection.
 func (conn *Conn) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
 	return doGet(ctx, conn.Conn, b, dest)
+}
+
+func (conn *Conn) GetRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
+	return doGetRaw(ctx, conn.Conn, dest, sql, params...)
 }
 
 // Exec using this connection.
@@ -230,9 +274,17 @@ func (conn *Conn) Exec(ctx context.Context, b builder.Builder) (sql.Result, erro
 	return doExec(ctx, conn.Conn, b)
 }
 
+func (conn *Conn) ExecRaw(ctx context.Context, sql string, params ...interface{}) (sql.Result, error) {
+	return doExecRaw(ctx, conn.Conn, sql, params...)
+}
+
 // MustExec using this connection. This method will panic on error.
 func (conn *Conn) MustExec(ctx context.Context, b builder.Builder) sql.Result {
 	return doMustExec(ctx, conn.Conn, b)
+}
+
+func (conn *Conn) MustExecRaw(ctx context.Context, sql string, params ...interface{}) sql.Result {
+	return doMustExecRaw(ctx, conn.Conn, sql, params...)
 }
 
 // Begin starts a new transaction using this connection.
@@ -271,50 +323,50 @@ func (conn *Conn) MustBeginTx(ctx context.Context, opts *sql.TxOptions) *Tx {
 	return tx
 }
 
-// Stmt is a wrapper around sqlx.Stmt which supports builder.Builder.
-type Stmt struct {
-	Stmt *sqlx.Stmt
-}
+// // Stmt is a wrapper around sqlx.Stmt which supports builder.Builder.
+// type Stmt struct {
+// 	Stmt *sqlx.Stmt
+// }
 
-// Select using this Stmt.
-func (stmt *Stmt) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return doSelect(ctx, stmtWrapper{stmt.Stmt}, b, dest)
-}
+// // Select using this Stmt.
+// func (stmt *Stmt) Select(ctx context.Context, b builder.Builder, dest interface{}) error {
+// 	return doSelect(ctx, stmtWrapper{stmt.Stmt}, b, dest)
+// }
 
-// Get using this Stmt.
-func (stmt *Stmt) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
-	return doGet(ctx, stmtWrapper{stmt.Stmt}, b, dest)
-}
+// // Get using this Stmt.
+// func (stmt *Stmt) Get(ctx context.Context, b builder.Builder, dest interface{}) error {
+// 	return doGet(ctx, stmtWrapper{stmt.Stmt}, b, dest)
+// }
 
-// Exec using this Stmt.
-func (stmt *Stmt) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
-	return doExec(ctx, stmtWrapper{stmt.Stmt}, b)
-}
+// // Exec using this Stmt.
+// func (stmt *Stmt) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
+// 	return doExec(ctx, stmtWrapper{stmt.Stmt}, b)
+// }
 
-// MustExec using this Stmt. This method will panic on error.
-func (stmt *Stmt) MustExec(ctx context.Context, b builder.Builder) sql.Result {
-	return doMustExec(ctx, stmtWrapper{stmt.Stmt}, b)
-}
+// // MustExec using this Stmt. This method will panic on error.
+// func (stmt *Stmt) MustExec(ctx context.Context, b builder.Builder) sql.Result {
+// 	return doMustExec(ctx, stmtWrapper{stmt.Stmt}, b)
+// }
 
-// stmtWrapper is an unexported wrapper which implements Queryer and Execer by
-// delegating to the underlying sqlx.Stmt.
-type stmtWrapper struct{ *sqlx.Stmt }
+// // stmtWrapper is an unexported wrapper which implements Queryer and Execer by
+// // delegating to the underlying sqlx.Stmt.
+// type stmtWrapper struct{ *sqlx.Stmt }
 
-func (w stmtWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	return w.Stmt.QueryContext(ctx, args...)
-}
+// func (w stmtWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+// 	return w.Stmt.QueryContext(ctx, args...)
+// }
 
-func (w stmtWrapper) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-	return w.Stmt.QueryxContext(ctx, args...)
-}
+// func (w stmtWrapper) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+// 	return w.Stmt.QueryxContext(ctx, args...)
+// }
 
-func (w stmtWrapper) QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row {
-	return w.Stmt.QueryRowxContext(ctx, args...)
-}
+// func (w stmtWrapper) QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row {
+// 	return w.Stmt.QueryRowxContext(ctx, args...)
+// }
 
-func (w stmtWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	return w.Stmt.ExecContext(ctx, args...)
-}
+// func (w stmtWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+// 	return w.Stmt.ExecContext(ctx, args...)
+// }
 
 // doSelect builds the query using the provided builder, executes it with queryer and
 // scans each row into dest, which must be a slice. If the slice elements are scannable,
@@ -325,6 +377,12 @@ func doSelect(ctx context.Context, q sqlx.QueryerContext, b builder.Builder, des
 	if err != nil {
 		return err
 	}
+	defer logSql(start, sql, params)
+	return sqlx.SelectContext(ctx, q, dest, sql, params...)
+}
+
+func doSelectRaw(ctx context.Context, q sqlx.QueryerContext, dest interface{}, sql string, params ...interface{}) error {
+	start := time.Now()
 	defer logSql(start, sql, params)
 	return sqlx.SelectContext(ctx, q, dest, sql, params...)
 }
@@ -342,6 +400,12 @@ func doGet(ctx context.Context, q sqlx.QueryerContext, b builder.Builder, dest i
 	return sqlx.GetContext(ctx, q, dest, sql, params...)
 }
 
+func doGetRaw(ctx context.Context, q sqlx.QueryerContext, dest interface{}, sql string, params ...interface{}) error {
+	start := time.Now()
+	defer logSql(start, sql, params)
+	return sqlx.GetContext(ctx, q, dest, sql, params...)
+}
+
 // doExec builds the query using the provided builder and executes it with execer.
 func doExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) (sql.Result, error) {
 	start := time.Now()
@@ -353,10 +417,24 @@ func doExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) (sql.R
 	return e.ExecContext(ctx, sql, params...)
 }
 
+func doExecRaw(ctx context.Context, e sqlx.ExecerContext, sql string, params ...interface{}) (sql.Result, error) {
+	start := time.Now()
+	defer logSql(start, sql, params)
+	return e.ExecContext(ctx, sql, params...)
+}
+
 // doMustExec builds the query using the provided builder and executes it with execer.
 // It will panic if there was an error.
 func doMustExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) sql.Result {
 	res, err := doExec(ctx, e, b)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func doMustExecRaw(ctx context.Context, e sqlx.ExecerContext, sql string, params ...interface{}) sql.Result {
+	res, err := doExecRaw(ctx, e, sql, params)
 	if err != nil {
 		panic(err)
 	}
