@@ -49,6 +49,14 @@ type Inserter interface {
 	Returning(returning ...string) Inserter
 }
 
+type Insecter interface {
+	Builder
+	Columns(col ...string) Insecter
+	Values(params ...interface{}) Insecter
+	Where(where string, params ...interface{}) Insecter
+	Returning(returning ...string) Insecter
+}
+
 // Upserter is an INSERT statement builder.
 type Upserter interface {
 	Builder
@@ -83,6 +91,10 @@ func Insert(table string) Inserter {
 
 func Update(table string) Updater {
 	return &updater{table: table}
+}
+
+func Insect(table string) Insecter {
+	return &insecter{table: table}
 }
 
 func Upsert(table, target string, params ...interface{}) Upserter {

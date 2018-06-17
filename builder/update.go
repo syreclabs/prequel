@@ -3,14 +3,12 @@ package builder
 import (
 	"bytes"
 	"errors"
-	"fmt"
 )
 
 // TODO: suport update like
 // UPDATE summary s SET (sum_x, sum_y, avg_x, avg_y) = (SELECT sum(x), sum(y), avg(x), avg(y) FROM data d WHERE d.group_id = s.group_id)
 
 type updater struct {
-	upsert    bool // tells builder if sql should be built for update or for upsert
 	with      withs
 	table     string
 	from      exprs
@@ -34,13 +32,6 @@ func (b *updater) Set(set string, params ...interface{}) Updater {
 	return b
 }
 
-func (b *updater) SetExcluded(col ...string) Updater {
-	for _, c := range col {
-		b.set = append(b.set, &expr{fmt.Sprintf("%s = EXCLUDED.%s", c, c), nil})
-	}
-	return b
-}
-
 func (b *updater) Where(where string, params ...interface{}) Updater {
 	b.where = append(b.where, &expr{where, params})
 	return b
@@ -53,22 +44,8 @@ func (b *updater) Returning(returning ...string) Updater {
 
 func (b *updater) Build() (string, []interface{}, error) {
 	// verify
-	if b.upsert {
-		if b.with != nil && len(b.with) > 0 {
-			return "", nil, errors.New("with not supported for upsert")
-		}
-
-		if len(b.from) > 0 {
-			return "", nil, errors.New("from not supported for update part of upsert")
-		}
-
-		if len(b.returning) > 0 {
-			return "", nil, errors.New("returning not supported for update part of upsert")
-		}
-	} else {
-		if isBlank(b.table) {
-			return "", nil, errors.New("empty table")
-		}
+	if isBlank(b.table) {
+		return "", nil, errors.New("empty table")
 	}
 
 	if len(b.set) == 0 {
@@ -91,10 +68,8 @@ func (b *updater) Build() (string, []interface{}, error) {
 	}
 
 	// update
-	if !b.upsert {
-		buf.WriteString("UPDATE ")
-		buf.WriteString(b.table)
-	}
+	buf.WriteString("UPDATE ")
+	buf.WriteString(b.table)
 
 	// set
 	if len(b.set) > 0 {

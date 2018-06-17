@@ -489,73 +489,128 @@ func TestExecInsect(t *testing.T) {
 		}
 
 		t.Run("RecordExists", func(t *testing.T) {
-			b := builder.
-				Select("*").From("ins").
-				Union(true, builder.Select("*").From("sel")).
-				With("sel", builder.
-					Select("*").
-					From("users").
-					Where("email = $1", existingUser.Email)).
-				With("ins", builder.
-					Insert("users").
+			t.Run("Insect", func(t *testing.T) {
+				b := builder.Insect("users").
 					Columns("first_name", "last_name", "email").
-					From(builder.
-						Select().
-						Columns("$1, $2, $3", existingUser.FirstName, existingUser.LastName, existingUser.Email).
-						Where("NOT EXISTS(SELECT * FROM sel)")).
-					Returning("*"))
+					Values(existingUser.FirstName, existingUser.LastName, existingUser.Email).
+					Where("email = $1", existingUser.Email).
+					Returning("*")
 
-			var users []*User
-			if err := db.Select(ctx, b, &users); err != nil {
-				t.Fatal(err)
-			}
-			if len(users) != 1 {
-				t.Fatalf("expected %d records, got %d", 1, len(users))
-			}
+				var users []*User
+				if err := db.Select(ctx, b, &users); err != nil {
+					t.Fatal(err)
+				}
+				if len(users) != 1 {
+					t.Fatalf("expected %d records, got %d", 1, len(users))
+				}
 
-			if users[0].Id != 1 {
-				t.Fatalf("expected first user with ID (%d), got (%d)", 1, users[0].Id)
-			}
+				if users[0].Id != 1 {
+					t.Fatalf("expected first user with ID (%d), got (%d)", 1, users[0].Id)
+				}
 
-			if users[0].Email != "user@example.com" {
-				t.Fatalf("expected first user with Email (%s), got (%s)", "user@example.com", users[0].Email)
-			}
+				if users[0].Email != "user@example.com" {
+					t.Fatalf("expected first user with Email (%s), got (%s)", "user@example.com", users[0].Email)
+				}
+			})
+
+			t.Run("Union", func(t *testing.T) {
+				b := builder.
+					Select("*").From("ins").
+					Union(true, builder.Select("*").From("sel")).
+					With("sel", builder.
+						Select("*").
+						From("users").
+						Where("email = $1", existingUser.Email)).
+					With("ins", builder.
+						Insert("users").
+						Columns("first_name", "last_name", "email").
+						From(builder.
+							Select().
+							Columns("$1, $2, $3", existingUser.FirstName, existingUser.LastName, existingUser.Email).
+							Where("NOT EXISTS(SELECT * FROM sel)")).
+						Returning("*"))
+
+				var users []*User
+				if err := db.Select(ctx, b, &users); err != nil {
+					t.Fatal(err)
+				}
+				if len(users) != 1 {
+					t.Fatalf("expected %d records, got %d", 1, len(users))
+				}
+
+				if users[0].Id != 1 {
+					t.Fatalf("expected first user with ID (%d), got (%d)", 1, users[0].Id)
+				}
+
+				if users[0].Email != "user@example.com" {
+					t.Fatalf("expected first user with Email (%s), got (%s)", "user@example.com", users[0].Email)
+				}
+			})
 		})
 
 		t.Run("RecordNotExists", func(t *testing.T) {
-			newUser := &User{
-				FirstName: "New",
-				LastName:  "Last",
-				Email:     "user212121222221@example.com",
-			}
+			t.Run("Insect", func(t *testing.T) {
+				newUser := &User{
+					FirstName: "New",
+					LastName:  "Last",
+					Email:     "user212121222221insect@example.com",
+				}
 
-			b := builder.
-				Select("*").From("ins").
-				Union(true, builder.Select("*").From("sel")).
-				With("sel", builder.
-					Select("*").
-					From("users").
-					Where("email = $1", newUser.Email)).
-				With("ins", builder.
-					Insert("users").
+				b := builder.Insect("users").
 					Columns("first_name", "last_name", "email").
-					From(builder.
-						Select().
-						Columns("$1, $2, $3", newUser.FirstName, newUser.LastName, newUser.Email).
-						Where("NOT EXISTS(SELECT * FROM sel)")).
-					Returning("*"))
+					Values(newUser.FirstName, newUser.LastName, newUser.Email).
+					Where("email = $1", newUser.Email).
+					Returning("*")
 
-			var users []*User
-			if err := db.Select(ctx, b, &users); err != nil {
-				t.Fatal(err)
-			}
-			if len(users) != 1 {
-				t.Fatalf("expected %d records, got %d", 1, len(users))
-			}
+				var users []*User
+				if err := db.Select(ctx, b, &users); err != nil {
+					t.Fatal(err)
+				}
+				if len(users) != 1 {
+					t.Fatalf("expected %d records, got %d", 1, len(users))
+				}
 
-			if users[0].Email != newUser.Email {
-				t.Fatalf("expected first user with Email (%s), got (%s)", newUser.Email, users[0].Email)
-			}
+				if users[0].Email != newUser.Email {
+					t.Fatalf("expected first user with Email (%s), got (%s)", newUser.Email, users[0].Email)
+				}
+			})
+
+			t.Run("Union", func(t *testing.T) {
+				newUser := &User{
+					FirstName: "New",
+					LastName:  "Last",
+					Email:     "user212121222221union@example.com",
+				}
+
+				b := builder.
+					Select("*").From("ins").
+					Union(true, builder.Select("*").From("sel")).
+					With("sel", builder.
+						Select("*").
+						From("users").
+						Where("email = $1", newUser.Email)).
+					With("ins", builder.
+						Insert("users").
+						Columns("first_name", "last_name", "email").
+						From(builder.
+							Select().
+							Columns("$1, $2, $3", newUser.FirstName, newUser.LastName, newUser.Email).
+							Where("NOT EXISTS(SELECT * FROM sel)")).
+						Returning("*"))
+
+				var users []*User
+				if err := db.Select(ctx, b, &users); err != nil {
+					t.Fatal(err)
+				}
+				if len(users) != 1 {
+					t.Fatalf("expected %d records, got %d", 1, len(users))
+				}
+
+				if users[0].Email != newUser.Email {
+					t.Fatalf("expected first user with Email (%s), got (%s)", newUser.Email, users[0].Email)
+				}
+			})
+
 		})
 	})
 }
