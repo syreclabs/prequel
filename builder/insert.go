@@ -112,7 +112,6 @@ func (b *inserter) Build() (string, []interface{}, error) {
 					buf.WriteString(", ")
 				}
 				if _, ok := v.(DefaultValue); ok {
-					fmt.Printf("== DEFAULT ==> %#v\n", v)
 					buf.WriteString("DEFAULT")
 				} else {
 					params = append(params, v)
