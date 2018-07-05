@@ -1,9 +1,10 @@
 // Package prequel provides PostgreSQL query bulder and executor.
-package prequel
+package prequel // import "syreclabs.com/go/prequel"
 
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/syreclabs/sqlx"
@@ -132,7 +133,22 @@ func (db *DB) MustExecRaw(ctx context.Context, sql string, params ...interface{}
 
 // Begin starts a new transaction using this DB.
 func (db *DB) Begin(ctx context.Context) (*Tx, error) {
+	defer logf(time.Now(), "BEGIN")
 	sqlxtx, err := db.DB.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{sqlxtx}, nil
+}
+
+// BeginTx starts a new transaction using this DB.
+func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+	if opts != nil {
+		defer logf(time.Now(), "BEGIN [Isolation:%v ReadOnly:%v]", opts.Isolation, opts.ReadOnly)
+	} else {
+		defer logf(time.Now(), "BEGIN [nil opts]")
+	}
+	sqlxtx, err := db.DB.BeginTxx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -146,15 +162,6 @@ func (db *DB) MustBegin(ctx context.Context) *Tx {
 		panic(err)
 	}
 	return tx
-}
-
-// BeginTx starts a new transaction using this DB.
-func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
-	sqlxtx, err := db.DB.BeginTxx(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return &Tx{sqlxtx}, nil
 }
 
 // MustBeginTx starts a new transaction using this DB. This method will panic on error.
@@ -233,11 +240,13 @@ func (tx *Tx) MustExecRaw(ctx context.Context, sql string, params ...interface{}
 
 // Commit this transaction.
 func (tx *Tx) Commit() error {
+	defer logf(time.Now(), "COMMIT")
 	return tx.Tx.Commit()
 }
 
 // Rollback this transaction.
 func (tx *Tx) Rollback() error {
+	defer logf(time.Now(), "ROLLBACK")
 	return tx.Tx.Rollback()
 }
 
@@ -289,6 +298,7 @@ func (conn *Conn) MustExecRaw(ctx context.Context, sql string, params ...interfa
 
 // Begin starts a new transaction using this connection.
 func (conn *Conn) Begin(ctx context.Context) (*Tx, error) {
+	defer logf(time.Now(), "BEGIN")
 	sqlxtx, err := conn.Conn.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -298,6 +308,11 @@ func (conn *Conn) Begin(ctx context.Context) (*Tx, error) {
 
 // BeginTx starts a new transaction using this connection.
 func (conn *Conn) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+	if opts != nil {
+		defer logf(time.Now(), "BEGIN [Isolation:%v ReadOnly:%v]", opts.Isolation, opts.ReadOnly)
+	} else {
+		defer logf(time.Now(), "BEGIN [nil opts]")
+	}
 	sqlxtx, err := conn.Conn.BeginTxx(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -441,7 +456,12 @@ func doMustExecRaw(ctx context.Context, e sqlx.ExecerContext, sql string, params
 	return res
 }
 
-func logSql(start time.Time, sql string, params []interface{}) {
+func logf(start time.Time, format string, args ...interface{}) {
+	elapsed := time.Since(start)
+	log.Printf("%s %v", fmt.Sprintf(format, args...), elapsed)
+}
+
+func logSql(start time.Time, sql string, params ...interface{}) {
 	elapsed := time.Since(start)
 	log.Printf("%s %v %v", sql, params, elapsed)
 }
