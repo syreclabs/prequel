@@ -47,6 +47,10 @@ func SetLogger(logger Logger) {
 	log = logger
 }
 
+func SetLogLevel(lvl int) {
+	log.SetLevel(lvl)
+}
+
 // DB is a wrapper around sqlx.DB which supports builder.Builder.
 type DB struct {
 	DB *sqlx.DB
@@ -461,7 +465,7 @@ func logf(start time.Time, format string, args ...interface{}) {
 	log.Printf("%s %v", fmt.Sprintf(format, args...), elapsed)
 }
 
-func logSql(start time.Time, sql string, params ...interface{}) {
+func logSql(start time.Time, sql string, params []interface{}) {
 	elapsed := time.Since(start)
 	log.Printf("%s %v %v", sql, params, elapsed)
 }
