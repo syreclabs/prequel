@@ -43,6 +43,7 @@ type Beginner interface {
 
 var log = newDefaultLogger()
 
+// SetLogger allows changing logging adapter used by prequel.
 func SetLogger(logger Logger) {
 	log = logger
 }

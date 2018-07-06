@@ -12,9 +12,20 @@ PostgreSQL query bulder and executor.
 
     go get -u syreclabs.com/go/prequel
 
-_prequel_ is a fast and lightweight PostgreSQL query bulder and runner which uses `github.com/jmoiron/sqlx` under the hood.
+_prequel_ is a fast and lightweight PostgreSQL query bulder and runner which uses `github.com/jmoiron/sqlx` under the hood. See [sqlx documentaion](https://godoc.org/github.com/jmoiron/sqlx) for struct/field mapping details.
 
-A few examples:
+#### Connecting to the database
+
+Where possible, _prequel_ uses thin wrappers around sqlx, so most connection related methods work the same way:
+
+```go
+db, err := Connect(context.Background(), "postgres", "postgres://host/database")
+if err != nil {
+    // handle the error
+}
+```
+
+One notable difference is that most _prequel_ methods require context.Context.
 
 #### SELECT
 
@@ -103,7 +114,7 @@ b := builder.
 SELECT id, first_name, last_name, email FROM users WHERE (id = $1) UNION SELECT id, first_name, last_name, email FROM users WHERE (id IN ($2,$3)) UNION ALL SELECT id, first_name, last_name, email FROM users WHERE (id IN ($4,$5)) ORDER BY id [1 1 2 1 2] 664.952µs
 ```
 
-... as well as `DISTINCT`, `GROUP BY`, `HAVING`, `ORDER BY`, `OFFSET`, `LIMIT` and `WITH` queries (see builder/select_test.go for examples).
+... as well as `DISTINCT`, `GROUP BY`, `HAVING`, `ORDER BY`, `OFFSET`, `LIMIT` and `WITH` queries (see [builder godoc](https://godoc.org/syreclabs.com/go/prequel/builder) and builder/select_test.go for examples).
 
 #### INSERT
 
@@ -237,3 +248,16 @@ _ := db.Select(ctx, b, &users)
 ```sql
 WITH sel AS (SELECT * FROM users WHERE (email = $1)), ins AS (INSERT INTO users (first_name, last_name, email) SELECT $2, $3, $4 WHERE (NOT EXISTS(SELECT * FROM sel)) RETURNING *) SELECT * FROM ins UNION ALL SELECT * FROM sel [user@example.com First Last user@example.com] 410.672µs
 ```
+
+#### Executing raw SQL
+
+Use builder.SQL() to get just parameter handling and `IN` args rewriting:
+
+```go
+b := builder.SQL("SELECT id, name FROM table1 WHERE id = $1 AND $2", 1, true)
+
+var user User
+_ := db.Get(ctx, b, &user)
+```
+
+Alternatively, various *Raw methods (`SelectRaw`, `GetRaw`, `ExecRaw`) allow executing queiries directly with sqlx.

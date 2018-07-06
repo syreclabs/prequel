@@ -8,7 +8,8 @@ type Logger interface {
 	SetLevel(lvl int)
 }
 
-// defaultLogger is a logging adapter which uses loggie for logging.
+// defaultLogger is a logging adapter which uses syreclabs.com/go/loggie
+// for logging. Use SetLogger() to change.
 type defaultLogger struct {
 	logger loggie.Logger
 }
