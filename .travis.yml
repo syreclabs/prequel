@@ -5,6 +5,8 @@ go:
   - "1.10.x"
   - master
 
+go_import_path: syreclabs.com/go/prequel
+
 addons:
   postgresql: "9.6"
 
