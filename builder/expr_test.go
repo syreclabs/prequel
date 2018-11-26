@@ -144,10 +144,31 @@ func TestCondition(t *testing.T) {
 			},
 			{
 				1,
+				expr{"id IN ($1) AND other_id IN ($2)", []interface{}{[]int{1, 2, 3}, []int{4, 5}}},
+				expr{"id IN ($1,$2,$3) AND other_id IN ($4,$5)", []interface{}{1, 2, 3, 4, 5}},
+				"",
+				6,
+			},
+			{
+				1,
+				expr{"id IN ($1) AND other_id IN ($2)", []interface{}{[]int{1, 2}, []int{3}}},
+				expr{"id IN ($1,$2) AND other_id IN ($3)", []interface{}{1, 2, 3}},
+				"",
+				4,
+			},
+			{
+				1,
 				expr{"name=$1 AND id IN ($2)", []interface{}{"name", []int{}}},
 				expr{},
 				"empty slice passed as 'IN' parameter",
 				3,
+			},
+			{
+				1,
+				expr{"id IN ($1) AND other_id IN ($2)", []interface{}{[]int{1, 2, 3}}},
+				expr{},
+				"invalid placeholder index: 2",
+				4,
 			},
 		}
 

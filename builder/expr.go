@@ -90,13 +90,14 @@ func (x *expr) build(startIdx int) (int, error) {
 					buf.WriteString(strconv.Itoa(startIdx + paramIdx + i))
 					newParams = append(newParams, m.v.Index(i).Interface())
 				}
+				paramIdx += m.length // set next parameter index
 			} else {
 				// current placeholder is not a slice, just renumber it
 				buf.WriteRune('$')
 				buf.WriteString(strconv.Itoa(startIdx + paramIdx))
 				newParams = append(newParams, x.params[pi])
+				paramIdx += 1 // set next parameter index
 			}
-			paramIdx++
 		default:
 			buf.WriteRune(rr[idx])
 			idx++
