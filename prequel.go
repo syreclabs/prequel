@@ -231,7 +231,7 @@ func (tx *Tx) Exec(ctx context.Context, b builder.Builder) (sql.Result, error) {
 }
 
 func (tx *Tx) ExecRaw(ctx context.Context, sql string, params ...interface{}) (sql.Result, error) {
-	return doExecRaw(ctx, tx.Tx, sql, params)
+	return doExecRaw(ctx, tx.Tx, sql, params...)
 }
 
 // Must Exec using this transaction and panic on error.
@@ -271,7 +271,7 @@ func (conn *Conn) Select(ctx context.Context, b builder.Builder, dest interface{
 }
 
 func (conn *Conn) SelectRaw(ctx context.Context, dest interface{}, sql string, params ...interface{}) error {
-	return doSelectRaw(ctx, conn.Conn, dest, sql, params)
+	return doSelectRaw(ctx, conn.Conn, dest, sql, params...)
 }
 
 // Get using this connection.
@@ -454,7 +454,7 @@ func doMustExec(ctx context.Context, e sqlx.ExecerContext, b builder.Builder) sq
 }
 
 func doMustExecRaw(ctx context.Context, e sqlx.ExecerContext, sql string, params ...interface{}) sql.Result {
-	res, err := doExecRaw(ctx, e, sql, params)
+	res, err := doExecRaw(ctx, e, sql, params...)
 	if err != nil {
 		panic(err)
 	}
