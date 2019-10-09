@@ -206,6 +206,27 @@ func TestSelectWhere(t *testing.T) {
 				t.Errorf("expected LastName %q, got %q", "Last", users[0].LastName)
 			}
 		})
+
+		t.Run("WithQuery", func(t *testing.T) {
+			b := builder.
+				Select("users.first_name", "users.last_name", "users.email").
+				With("u2", builder.Select("first_name", "last_name").From("users")).
+				From("users").
+				From("INNER JOIN u2 ON u2.first_name = users.first_name").
+				Where("users.last_name IN ($1)", []string{"Last", "Doe", "Somebody", "Else"}).
+				OrderBy("users.first_name DESC")
+
+			var users []*User
+			if err := db.Select(ctx, b, &users); err != nil {
+				t.Fatal(err)
+			}
+			if len(users) != 2 {
+				t.Fatalf("expected %d records, got %d", 1, len(users))
+			}
+			if users[0].LastName != "Doe" {
+				t.Errorf("expected LastName %q, got %q", "Last", users[0].LastName)
+			}
+		})
 	})
 }
 
@@ -269,6 +290,28 @@ func TestExecInsert(t *testing.T) {
 			}
 			if rows != 3 {
 				t.Fatalf("expected RowsAffected to be %d, got %d", 3, rows)
+			}
+		})
+
+		t.Run("WithQuery", func(t *testing.T) {
+			b := builder.
+				Insert("users").
+				Columns("first_name", "last_name", "email").
+				With("u2", builder.Select("first_name", "last_name", "'test@notmail.me' as email").
+					From("users").
+					Where("email = $1", "maxrockatansky@notmail.me")).
+				From(builder.Select("first_name", "last_name", "email").From("u2"))
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
 			}
 		})
 
@@ -467,6 +510,26 @@ func TestExecUpsert(t *testing.T) {
 				t.Fatalf("expected RowsAffected to be %d, got %d", 3, rows)
 			}
 		})
+
+		t.Run("WithQuery", func(t *testing.T) {
+			b := builder.
+				Upsert("users", "(email)").
+				With("u2", builder.Select("'Jane' as first_name", "last_name", "email").From("users").Where("email = $1", "janie@notmail.me")).
+				Columns("first_name", "last_name", "email").
+				From(builder.Select("*").From("u2"))
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
 	})
 }
 
@@ -619,22 +682,45 @@ func TestExecUpdate(t *testing.T) {
 	withSchema(context.Background(), func(ctx context.Context) {
 		loadFixtures(ctx)
 
-		b := builder.
-			Update("users").
-			Set("last_name = $1", "Another").
-			Where("email = $1", "user@example.com")
+		t.Run("Simple", func(t *testing.T) {
+			b := builder.
+				Update("users").
+				Set("last_name = $1", "Another").
+				Where("email = $1", "user@example.com")
 
-		res, err := db.Exec(ctx, b)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rows, err := res.RowsAffected()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rows != 1 {
-			t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
-		}
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
+
+		t.Run("WithQuery", func(t *testing.T) {
+			b := builder.
+				Update("users").
+				With("u2", builder.Select("*").From("users").Where("email = $1", "user@example.com")).
+				Set("last_name = $1", "u2.last_name").
+				From("u2").
+				Where("users.email = $1", "user@example.com")
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
 	})
 }
 
@@ -642,21 +728,42 @@ func TestExecDelete(t *testing.T) {
 	withSchema(context.Background(), func(ctx context.Context) {
 		loadFixtures(ctx)
 
-		b := builder.
-			Delete("users").
-			Where("email = $1", "user@example.com")
+		t.Run("Simple", func(t *testing.T) {
+			b := builder.
+				Delete("users").
+				Where("email = $1", "user@example.com")
 
-		res, err := db.Exec(ctx, b)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rows, err := res.RowsAffected()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rows != 1 {
-			t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
-		}
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
+
+		t.Run("WithQuery", func(t *testing.T) {
+			b := builder.
+				Delete("users").
+				With("u2", builder.Select("*").From("users").Where("email = $1", "janie@email.com")).
+				Where("users.id IN (SELECT id FROM u2)")
+
+			res, err := db.Exec(ctx, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, err := res.RowsAffected()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows != 1 {
+				t.Fatalf("expected RowsAffected to be %d, got %d", 1, rows)
+			}
+		})
 	})
 }
 

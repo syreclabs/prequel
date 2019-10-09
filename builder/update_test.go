@@ -96,7 +96,7 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) UPDATE table1 SET a = $2, b = table2.name, c = $3 RETURNING *"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) UPDATE table1 SET a = $2, b = table2.name, c = $3 FROM table2 RETURNING *"
 		b := Update("table1").
 			With("table2", Select("id", "name").
 				From("table1").
@@ -104,6 +104,7 @@ func TestUpdate(t *testing.T) {
 			Set("a = $1", 1).
 			Set("b = table2.name").
 			Set("c = $1", time.Now()).
+			From("table2").
 			Returning("*")
 
 		sql, params, err := b.Build()

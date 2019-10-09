@@ -105,7 +105,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)), table3 AS (SELECT id, name FROM table1 WHERE (name = $2)) DELETE FROM table1 WHERE (table2.id = table1.id) AND (table3.id = table1.id) AND (name = $3 AND $4) RETURNING id, name"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)), table3 AS (SELECT id, name FROM table1 WHERE (name = $2)) DELETE FROM table1 WHERE (table1.id IN (SELECT id FROM table2)) AND (table1.id IN (SELECT id FROM table3)) AND (name = $3 AND $4) RETURNING id, name"
 		b := Delete("table1").
 			With("table2",
 				Select("id", "name").
@@ -115,8 +115,8 @@ func TestDelete(t *testing.T) {
 				Select("id", "name").
 					From("table1").
 					Where("name = $1", "d")).
-			Where("table2.id = table1.id").
-			Where("table3.id = table1.id").
+			Where("table1.id IN (SELECT id FROM table2)").
+			Where("table1.id IN (SELECT id FROM table3)").
 			Where("name = $2 AND $1", "a", true).
 			Returning("id", "name")
 

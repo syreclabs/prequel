@@ -172,13 +172,13 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithQuery", func(t *testing.T) {
-		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) SELECT * FROM table1 WHERE (table2.id = table1.id) AND ($2 AND table2.name != 'bbb')"
+		expectedSql := "WITH table2 AS (SELECT id, name FROM table1 WHERE (name = $1)) SELECT * FROM table1 INNER JOIN table2 ON table2.id = table1.id WHERE ($2 AND table2.name != 'bbb')"
 		b := Select("*").
 			With("table2", Select("id", "name").
 				From("table1").
 				Where("name = $1", "d")).
 			From("table1").
-			Where("table2.id = table1.id").
+			From("INNER JOIN table2 ON table2.id = table1.id").
 			Where("$1 AND table2.name != 'bbb'", true)
 
 		sql, params, err := b.Build()
