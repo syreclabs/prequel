@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/syreclabs/sqlx"
 	"syreclabs.com/go/prequel/builder"
 )
 

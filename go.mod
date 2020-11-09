@@ -1,11 +1,9 @@
 module syreclabs.com/go/prequel
 
-go 1.11
+go 1.15
 
 require (
-	github.com/jmoiron/sqlx v1.2.0
-	github.com/lib/pq v1.0.0
-	github.com/syreclabs/sqlx v0.0.0-20180607151848-19045bd382fc
-	google.golang.org/appengine v1.4.0 // indirect
+	github.com/jmoiron/sqlx v1.2.1-0.20200615141059-0794cb1f47ee
+	github.com/lib/pq v1.8.0
 	syreclabs.com/go/loggie v1.0.1
 )

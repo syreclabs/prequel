@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/syreclabs/sqlx"
+	"github.com/jmoiron/sqlx"
 	"syreclabs.com/go/prequel/builder"
 )
 
@@ -149,9 +149,9 @@ func (db *DB) Begin(ctx context.Context) (*Tx, error) {
 // BeginTx starts a new transaction using this DB.
 func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
 	if opts != nil {
-		defer logf(time.Now(), "BEGIN [Isolation:%v ReadOnly:%v]", opts.Isolation, opts.ReadOnly)
+		defer logf(time.Now(), "BEGIN [opts: %#v]", opts)
 	} else {
-		defer logf(time.Now(), "BEGIN [nil opts]")
+		defer logf(time.Now(), "BEGIN")
 	}
 	sqlxtx, err := db.DB.BeginTxx(ctx, opts)
 	if err != nil {
@@ -183,7 +183,7 @@ func (db *DB) MustBeginTx(ctx context.Context, opts *sql.TxOptions) *Tx {
 // Queries run on the same Conn will be run in the same database session.
 // Every Conn must be returned to the database pool after use by calling Conn.Close.
 func (db *DB) Conn(ctx context.Context) (*Conn, error) {
-	sqlxconn, err := db.DB.Connx()
+	sqlxconn, err := db.DB.Connx(ctx)
 	if err != nil {
 		return nil, err
 	}
